@@ -11,6 +11,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { CaptureResult, RecordingResult } from '../types';
+import { CustomDropdown } from './CustomDropdown';
 
 interface CaptureCenterProps {
   onTriggerCapture: (mode: string, delayMs: number) => Promise<void>;
@@ -97,33 +98,26 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: 'var(--md-sys-color-surface-container-high)',
+            backgroundColor: 'var(--md-sys-color-surface-container)',
             border: '1px solid var(--md-sys-color-outline-variant)',
             borderRadius: 'var(--radius-pill)',
-            padding: '6px 14px',
+            padding: '4px 8px 4px 14px',
           }}
         >
           <Clock size={16} color="var(--md-sys-color-primary)" />
           <span style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>Delay:</span>
-          <select
+          <CustomDropdown
             value={delaySeconds}
-            onChange={(e) => setDelaySeconds(Number(e.target.value))}
-            style={{
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: 'var(--md-sys-color-on-surface)',
-              fontWeight: 600,
-              fontSize: '12px',
-              cursor: 'pointer',
-              padding: '0 4px',
-            }}
-          >
-            <option value={0}>0s (Instant)</option>
-            <option value={1}>1s</option>
-            <option value={2}>2s</option>
-            <option value={3}>3s</option>
-            <option value={5}>5s</option>
-          </select>
+            onChange={(val) => setDelaySeconds(Number(val))}
+            width="130px"
+            options={[
+              { value: 0, label: '0s (Instant)' },
+              { value: 1, label: '1s' },
+              { value: 2, label: '2s' },
+              { value: 3, label: '3s' },
+              { value: 5, label: '5s' },
+            ]}
+          />
         </div>
       </div>
 

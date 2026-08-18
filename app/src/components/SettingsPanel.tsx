@@ -6,6 +6,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import { AppConfig } from '../types';
+import { CustomDropdown } from './CustomDropdown';
 
 interface SettingsPanelProps {
   config: AppConfig | null;
@@ -125,52 +126,52 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
               Default Image Format
             </label>
-            <select
+            <CustomDropdown
               value={config.default_image_format}
-              onChange={(e) => handleChange('default_image_format', e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <option value="png">PNG (Lossless)</option>
-              <option value="jpg">JPEG (Compressed)</option>
-              <option value="webp">WebP (Modern)</option>
-            </select>
+              onChange={(val) => handleChange('default_image_format', val)}
+              options={[
+                { value: 'png', label: 'PNG (Lossless)' },
+                { value: 'jpg', label: 'JPEG (Compressed)' },
+                { value: 'webp', label: 'WebP (Modern)' },
+              ]}
+            />
           </div>
 
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
               Default Recording Format
             </label>
-            <select
+            <CustomDropdown
               value={config.default_recording_format}
-              onChange={(e) => handleChange('default_recording_format', e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <option value="gif">GIF (Palette Optimized)</option>
-              <option value="mp4">MP4 (H.264 Video)</option>
-              <option value="webm">WebM (VP9 Video)</option>
-            </select>
+              onChange={(val) => handleChange('default_recording_format', val)}
+              options={[
+                { value: 'gif', label: 'GIF (Palette Optimized)' },
+                { value: 'mp4', label: 'MP4 (H.264 Video)' },
+                { value: 'webm', label: 'WebM (VP9 Video)' },
+              ]}
+            />
           </div>
 
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
               Recording Framerate
             </label>
-            <select
+            <CustomDropdown
               value={config.recording_fps}
-              onChange={(e) => handleChange('recording_fps', Number(e.target.value))}
-              style={{ width: '100%' }}
-            >
-              <option value={15}>15 FPS (Smooth GIF)</option>
-              <option value={30}>30 FPS (Standard Video)</option>
-              <option value={60}>60 FPS (High Motion)</option>
-            </select>
+              onChange={(val) => handleChange('recording_fps', Number(val))}
+              options={[
+                { value: 15, label: '15 FPS (Smooth GIF)' },
+                { value: 30, label: '30 FPS (Standard Video)' },
+                { value: 60, label: '60 FPS (High Motion)' },
+              ]}
+            />
           </div>
 
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
               Audio Recording
             </label>
             <label
@@ -178,8 +179,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginTop: '8px',
+                marginTop: '10px',
                 fontSize: '13px',
+                color: 'var(--md-sys-color-on-surface)',
                 cursor: 'pointer',
               }}
             >
@@ -187,7 +189,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 type="checkbox"
                 checked={config.recording_include_audio}
                 onChange={(e) => handleChange('recording_include_audio', e.target.checked)}
-                style={{ accentColor: 'var(--md-sys-color-primary)' }}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
               />
               <span>Record PulseAudio / PipeWire audio stream</span>
             </label>
@@ -214,32 +216,32 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--md-sys-color-on-surface)', cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={config.after_upload.copy_url_to_clipboard}
               onChange={(e) => handleAfterUploadChange('copy_url_to_clipboard', e.target.checked)}
-              style={{ accentColor: 'var(--md-sys-color-primary)' }}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
             />
             <span>Copy uploaded URL to clipboard automatically</span>
           </label>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--md-sys-color-on-surface)', cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={config.after_upload.open_url_in_browser}
               onChange={(e) => handleAfterUploadChange('open_url_in_browser', e.target.checked)}
-              style={{ accentColor: 'var(--md-sys-color-primary)' }}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
             />
             <span>Open uploaded link in default web browser</span>
           </label>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--md-sys-color-on-surface)', cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={config.after_upload.show_notification}
               onChange={(e) => handleAfterUploadChange('show_notification', e.target.checked)}
-              style={{ accentColor: 'var(--md-sys-color-primary)' }}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
             />
             <span>Show desktop system notification upon successful upload</span>
           </label>

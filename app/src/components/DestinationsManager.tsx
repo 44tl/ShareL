@@ -9,6 +9,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { CustomUploaderConfig, UploadResult } from '../types';
+import { CustomDropdown } from './CustomDropdown';
 
 interface DestinationsManagerProps {
   uploaders: CustomUploaderConfig[];
@@ -434,34 +435,34 @@ export const DestinationsManager: React.FC<DestinationsManagerProps> = ({
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
                   HTTP Method
                 </label>
-                <select
+                <CustomDropdown
                   value={selectedUploader.RequestMethod}
-                  onChange={(e) => handleUpdateField('RequestMethod', e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="GET">GET</option>
-                  <option value="PATCH">PATCH</option>
-                </select>
+                  onChange={(val) => handleUpdateField('RequestMethod', val)}
+                  options={[
+                    { value: 'POST', label: 'POST' },
+                    { value: 'PUT', label: 'PUT' },
+                    { value: 'GET', label: 'GET' },
+                    { value: 'PATCH', label: 'PATCH' },
+                  ]}
+                />
               </div>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
                   Body Type
                 </label>
-                <select
+                <CustomDropdown
                   value={selectedUploader.Body}
-                  onChange={(e) => handleUpdateField('Body', e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="MultipartFormData">Multipart / Form-Data</option>
-                  <option value="FormUrlEncoded">Form URL Encoded</option>
-                  <option value="JSON">JSON Payload</option>
-                  <option value="Binary">Raw Binary</option>
-                </select>
+                  onChange={(val) => handleUpdateField('Body', val)}
+                  options={[
+                    { value: 'MultipartFormData', label: 'Multipart / Form-Data' },
+                    { value: 'FormUrlEncoded', label: 'Form URL Encoded' },
+                    { value: 'JSON', label: 'JSON Payload' },
+                    { value: 'Binary', label: 'Raw Binary' },
+                  ]}
+                />
               </div>
             </div>
 
