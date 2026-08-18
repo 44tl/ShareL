@@ -105,6 +105,12 @@ pub fn start_recording(
         .map(|o| o.status.success())
         .unwrap_or(false);
 
+    let has_ffmpeg = Command::new("which")
+        .arg("ffmpeg")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
     let child = if has_gpu_recorder {
         let mut cmd = Command::new("gpu-screen-recorder");
         cmd.arg("-w").arg("screen");
@@ -132,8 +138,21 @@ pub fn start_recording(
         }
 
         cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
+    } else if has_ffmpeg {
+        let mut cmd = Command::new("ffmpeg");
+        cmd.arg("-y");
+        let display = std::env::var("DISPLAY").unwrap_or_else(|_| ":0.0".to_string());
+        cmd.arg("-f").arg("x11grab");
+        cmd.arg("-r").arg(target_fps.to_string());
+        cmd.arg("-i").arg(&display);
+        if include_audio {
+            cmd.arg("-f").arg("pulse").arg("-i").arg("default");
+        }
+        cmd.arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast");
+        cmd.arg(&record_target);
+        cmd.spawn().map_err(|e| format!("Failed to spawn ffmpeg recorder: {}", e))?
     } else {
-        return Err("No supported screen recorder backend found on this system.".to_string());
+        return Err("No supported screen recorder backend (gpu-screen-recorder, wf-recorder, or ffmpeg) found on this system.".to_string());
     };
 
     *state_lock = Some(RecordingState {

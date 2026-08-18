@@ -227,18 +227,34 @@ pub fn parse_pattern(
         })
         .to_string();
 
+    // Support standard ShareX regex syntax: $regex:pattern,group$ or $regex:pattern|group$ or $regex:group$
     let regex_re = regex::Regex::new(r"\$regex:([^$]+)\$").unwrap();
     result = regex_re
         .replace_all(&result, |caps: &regex::Captures| {
-            let group_num = &caps[1];
-            if let Ok(idx) = group_num.parse::<usize>() {
-                if let Ok(re) = regex::Regex::new(r"https?://[^\s<>]+|\S+") {
-                    if let Some(captures) = re.captures(raw_response) {
-                        return captures.get(idx).map(|m| m.as_str()).unwrap_or_default().to_string();
-                    }
+            let inner = &caps[1];
+            // Format can be "pattern,group" or "pattern|group" or "group"
+            let (pat, group_idx) = if let Some(last_comma) = inner.rfind(',') {
+                let pat = &inner[..last_comma];
+                let group_str = &inner[last_comma + 1..];
+                let idx = group_str.parse::<usize>().unwrap_or(0);
+                (pat, idx)
+            } else if let Some(last_pipe) = inner.rfind('|') {
+                let pat = &inner[..last_pipe];
+                let group_str = &inner[last_pipe + 1..];
+                let idx = group_str.parse::<usize>().unwrap_or(0);
+                (pat, idx)
+            } else if let Ok(idx) = inner.parse::<usize>() {
+                (r"https?://[^\s<>]+|\S+", idx)
+            } else {
+                (inner, 0)
+            };
+
+            if let Ok(re) = regex::Regex::new(pat) {
+                if let Some(captures) = re.captures(raw_response) {
+                    return captures.get(group_idx).map(|m| m.as_str()).unwrap_or_default().to_string();
                 }
             }
-            raw_response.to_string()
+            String::new()
         })
         .to_string();
 
@@ -388,4 +404,22 @@ pub async fn execute_upload(
         status_code: status,
         duration_ms,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_pattern_regex() {
+        let headers = reqwest::header::HeaderMap::new();
+        let raw = "File uploaded to: https://example.com/view/abcd123 and thumbnail at https://example.com/thumb/abcd123";
+        let pattern = "$regex:https://example.com/view/([a-zA-Z0-9]+),1$";
+        let parsed = parse_pattern(pattern, raw, None, "test.png", &headers);
+        assert_eq!(parsed, "abcd123");
+
+        let full_match_pattern = "$regex:https://example.com/view/([a-zA-Z0-9]+),0$";
+        let full_parsed = parse_pattern(full_match_pattern, raw, None, "test.png", &headers);
+        assert_eq!(full_parsed, "https://example.com/view/abcd123");
+    }
 }

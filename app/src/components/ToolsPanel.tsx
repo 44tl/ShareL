@@ -59,7 +59,13 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
       setOcrError(null);
       try {
         const file = e.target.files[0];
-        const res = await onRunOcrOnPath(file.name);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res = await onRunOcrOnPath(dataUrl);
         if (res.success) {
           setOcrText(res.text);
         } else {

@@ -522,7 +522,15 @@ export const App: React.FC = () => {
             <ToolsPanel
               onCopyText={handleCopyText}
               onRunOcrOnPath={async (p) => {
-                return await invokeCommand<OcrResult>('ocr_image', { imagePath: p });
+                let pathOrData = p;
+                if (p.startsWith('data:')) {
+                  pathOrData = await invokeCommand<string>('save_edited_image', {
+                    dataUrl: p,
+                    originalPath: undefined,
+                    format: 'png',
+                  });
+                }
+                return await invokeCommand<OcrResult>('ocr_image', { imagePath: pathOrData });
               }}
             />
           )}

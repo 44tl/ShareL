@@ -16,6 +16,7 @@ use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 fn notify_history_changed(app: &tauri::AppHandle) {
     let _ = app.emit("history://changed", ());
@@ -251,7 +252,40 @@ fn get_file_data_url(file_path: String) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        let print_screen: Shortcut = "PrintScreen".parse().unwrap();
+                        let ctrl_shift_print: Shortcut = "Ctrl+Shift+PrintScreen".parse().unwrap();
+                        let ctrl_print: Shortcut = "Ctrl+PrintScreen".parse().unwrap();
+                        let alt_print: Shortcut = "Alt+PrintScreen".parse().unwrap();
+
+                        let mode = if shortcut == &ctrl_shift_print || shortcut == &ctrl_print {
+                            "region"
+                        } else if shortcut == &alt_print {
+                            "window"
+                        } else if shortcut == &print_screen {
+                            "fullscreen"
+                        } else {
+                            "fullscreen"
+                        };
+
+                        let app_handle = app.clone();
+                        let mode_str = mode.to_string();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = capture_screen(app_handle, mode_str, 0).await;
+                        });
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
+            // Register default global shortcuts for capture
+            let _ = app.global_shortcut().register("PrintScreen".parse::<Shortcut>().unwrap());
+            let _ = app.global_shortcut().register("Ctrl+Shift+PrintScreen".parse::<Shortcut>().unwrap());
+            let _ = app.global_shortcut().register("Ctrl+PrintScreen".parse::<Shortcut>().unwrap());
+            let _ = app.global_shortcut().register("Alt+PrintScreen".parse::<Shortcut>().unwrap());
             let show_i = MenuItem::with_id(app, "show", "Open ShareL", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
@@ -292,6 +326,20 @@ pub fn run() {
                 .build(app)?;
 
             let _ = tray;
+
+            if let Some(window) = app.get_webview_window("main") {
+                let win = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        let cfg = load_config();
+                        if cfg.minimize_to_tray {
+                            api.prevent_close();
+                            let _ = win.hide();
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
