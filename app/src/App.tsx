@@ -399,6 +399,7 @@ export const App: React.FC = () => {
       <Navbar
         recordingStatus={recordingStatus}
         onQuickCapture={handleTriggerCapture}
+        onStartRecording={handleStartRecording}
         onStopRecording={handleStopRecording}
         activeView={activeView}
       />

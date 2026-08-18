@@ -1,15 +1,14 @@
 use chrono::Local;
-use gstreamer as gst;
-use gstreamer::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::process::{Child, Command};
 use std::sync::Mutex;
 
-static RECORDING_PIPELINE: Mutex<Option<RecordingState>> = Mutex::new(None);
+static RECORDING_PROCESS: Mutex<Option<RecordingState>> = Mutex::new(None);
 
 pub struct RecordingState {
-    pub pipeline: gst::Pipeline,
+    pub child: Child,
     pub output_path: PathBuf,
     pub start_time: i64,
     pub format: String,
@@ -37,7 +36,7 @@ pub struct RecordingResult {
 }
 
 pub fn get_recording_status() -> RecordingStatus {
-    let state = RECORDING_PIPELINE.lock().unwrap();
+    let state = RECORDING_PROCESS.lock().unwrap();
     if let Some(ref r) = *state {
         let duration = (Local::now().timestamp() - r.start_time).max(0) as u64;
         RecordingStatus {
@@ -60,15 +59,13 @@ pub fn start_recording(
     recordings_dir: &str,
     format: &str,
     fps: u32,
-    _include_audio: bool,
-    _region: Option<String>,
+    include_audio: bool,
+    region: Option<String>,
 ) -> Result<(), String> {
-    let mut state_lock = RECORDING_PIPELINE.lock().unwrap();
+    let mut state_lock = RECORDING_PROCESS.lock().unwrap();
     if state_lock.is_some() {
         return Err("A recording is already in progress".to_string());
     }
-
-    gst::init().map_err(|e| format!("Failed to initialize GStreamer: {}", e))?;
 
     let dir = PathBuf::from(recordings_dir);
     if !dir.exists() {
@@ -95,23 +92,69 @@ pub fn start_recording(
 
     let framerate = fps.max(10).min(60);
 
-    let pipe_str = format!(
-        "pipewiresrc do-timestamp=true ! videoconvert ! videorate ! video/x-raw,framerate={}/1 ! x264enc tune=zerolatency speed-preset=ultrafast ! mp4mux ! filesink location=\"{}\"",
-        framerate,
-        record_target
-    );
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_lowercase();
+    let is_gnome = desktop.contains("gnome");
 
-    let pipeline = gst::parse::launch(&pipe_str)
-        .map_err(|e| format!("Failed to create GStreamer recording pipeline: {}", e))?
-        .dynamic_cast::<gst::Pipeline>()
-        .map_err(|_| "Failed to cast element to GStreamer Pipeline".to_string())?;
+    let has_gpu_recorder = Command::new("which")
+        .arg("gpu-screen-recorder")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
 
-    pipeline
-        .set_state(gst::State::Playing)
-        .map_err(|e| format!("Failed to start recording stream: {:?}", e))?;
+    let has_wf = Command::new("which")
+        .arg("wf-recorder")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    let child = if is_gnome && has_gpu_recorder {
+        let mut cmd = Command::new("gpu-screen-recorder");
+        cmd.arg("-w").arg("portal");
+        cmd.arg("-f").arg(framerate.to_string());
+        cmd.arg("-o").arg(&record_target);
+        if include_audio {
+            cmd.arg("-a").arg("default_output");
+        }
+        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
+    } else if has_wf && !is_gnome {
+        let mut cmd = Command::new("wf-recorder");
+        cmd.arg("-f").arg(&record_target);
+        cmd.arg("-r").arg(framerate.to_string());
+
+        if let Some(geom) = region {
+            if !geom.trim().is_empty() {
+                cmd.arg("-g").arg(geom);
+            }
+        }
+
+        if include_audio {
+            cmd.arg("-a");
+        }
+
+        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
+    } else if has_gpu_recorder {
+        let mut cmd = Command::new("gpu-screen-recorder");
+        cmd.arg("-w").arg("portal");
+        cmd.arg("-f").arg(framerate.to_string());
+        cmd.arg("-o").arg(&record_target);
+        if include_audio {
+            cmd.arg("-a").arg("default_output");
+        }
+        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
+    } else if has_wf {
+        let mut cmd = Command::new("wf-recorder");
+        cmd.arg("-f").arg(&record_target);
+        cmd.arg("-r").arg(framerate.to_string());
+        if include_audio {
+            cmd.arg("-a");
+        }
+        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
+    } else {
+        return Err("No supported screen recorder backend available on this system.".to_string());
+    };
 
     *state_lock = Some(RecordingState {
-        pipeline,
+        child,
         output_path: final_path,
         start_time: now.timestamp(),
         format: target_format.to_string(),
@@ -123,26 +166,25 @@ pub fn start_recording(
 }
 
 pub fn stop_recording() -> Result<RecordingResult, String> {
-    let mut state_lock = RECORDING_PIPELINE.lock().unwrap();
-    let state = state_lock.take().ok_or("No active recording to stop")?;
+    let mut state_lock = RECORDING_PROCESS.lock().unwrap();
+    let mut state = state_lock.take().ok_or("No active recording to stop")?;
 
-    let _ = state.pipeline.send_event(gst::event::Eos::new());
-
-    let bus = state.pipeline.bus().ok_or("Pipeline bus not available")?;
-    for msg in bus.iter_timed(gst::ClockTime::from_seconds(3)) {
-        if let gst::MessageView::Eos(..) = msg.view() {
-            break;
+    #[cfg(unix)]
+    {
+        let pid = state.child.id() as i32;
+        unsafe {
+            libc::kill(pid, libc::SIGINT);
         }
     }
 
-    let _ = state.pipeline.set_state(gst::State::Null);
+    let _ = state.child.wait();
 
     let duration = (Local::now().timestamp() - state.start_time).max(1) as u64;
 
     if state.is_gif {
         if let Some(ref temp_mp4) = state.temp_video_path {
             if temp_mp4.exists() {
-                let _ = std::process::Command::new("ffmpeg")
+                let _ = Command::new("ffmpeg")
                     .args([
                         "-y",
                         "-i",

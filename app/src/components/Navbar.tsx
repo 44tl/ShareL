@@ -5,6 +5,7 @@ import { RecordingStatus } from '../types';
 interface NavbarProps {
   recordingStatus: RecordingStatus;
   onQuickCapture: (mode: string) => void;
+  onStartRecording: (format: string, fps: number, audio: boolean) => void;
   onStopRecording: () => void;
   activeView: string;
 }
@@ -12,12 +13,21 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   recordingStatus,
   onQuickCapture,
+  onStartRecording,
   onStopRecording,
 }) => {
   const formatSeconds = (sec: number) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleRecordButtonClick = () => {
+    if (recordingStatus.is_recording) {
+      onStopRecording();
+    } else {
+      onStartRecording('gif', 15, false);
+    }
   };
 
   return (
@@ -65,17 +75,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
-              backgroundColor: 'rgba(242, 184, 181, 0.15)',
-              border: '1px solid rgba(242, 184, 181, 0.3)',
-              padding: '4px 14px',
+              gap: '8px',
+              backgroundColor: 'var(--md-sys-color-error-container)',
+              color: 'var(--md-sys-color-on-error-container)',
+              padding: '6px 14px',
               borderRadius: 'var(--radius-pill)',
+              fontSize: '12.5px',
+              fontWeight: 600,
             }}
           >
-            <Circle size={10} fill="var(--md-sys-color-error)" color="var(--md-sys-color-error)" />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--md-sys-color-error)' }}>
-              REC {formatSeconds(recordingStatus.duration_seconds)} ({recordingStatus.format?.toUpperCase()})
-            </span>
+            <Circle size={10} color="var(--md-sys-color-error)" fill="var(--md-sys-color-error)" />
+            <span>REC {formatSeconds(recordingStatus.duration_seconds)}</span>
             <button
               onClick={onStopRecording}
               style={{
@@ -135,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <button
-          onClick={() => onQuickCapture('recording_gif')}
+          onClick={handleRecordButtonClick}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -152,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--md-sys-color-surface-container)')}
         >
           <Video size={15} color={recordingStatus.is_recording ? '#ffffff' : 'var(--md-sys-color-primary)'} />
-          <span>{recordingStatus.is_recording ? 'Recording' : 'Record GIF'}</span>
+          <span>{recordingStatus.is_recording ? 'Stop Recording' : 'Record GIF'}</span>
         </button>
 
         <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--md-sys-color-outline-variant)', margin: '0 4px' }} />
