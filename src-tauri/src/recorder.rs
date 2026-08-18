@@ -434,6 +434,8 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         }
 
         cmd.arg("-f").arg(target_fps.to_string());
+        cmd.arg("-fm").arg("cfr");
+        cmd.arg("-tune").arg("quality");
 
         let gpu_codec = match raw_codec.as_str() {
             "hevc" | "h265" => "hevc",
@@ -489,6 +491,8 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         let mut cmd = Command::new("wf-recorder");
         cmd.arg("-f").arg(&record_target);
         cmd.arg("-r").arg(target_fps.to_string());
+        cmd.arg("-p").arg("preset=veryfast");
+        cmd.arg("-p").arg("crf=18");
 
         let wf_codec = match raw_codec.as_str() {
             "hevc" | "h265" => "libx265",
@@ -524,7 +528,7 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
 
         let display = std::env::var("DISPLAY").unwrap_or_else(|_| ":0.0".to_string());
         cmd.arg("-f").arg("x11grab");
-        cmd.arg("-r").arg(target_fps.to_string());
+        cmd.arg("-framerate").arg(target_fps.to_string());
 
         if let Some(ref geom) = final_geometry {
             if let Some((offset, size)) = geom.split_once(' ') {
@@ -554,6 +558,7 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         };
         cmd.arg("-c:v").arg(ff_codec);
         cmd.arg("-b:v").arg(format!("{}k", bitrate_kbps));
+        cmd.arg("-r").arg(target_fps.to_string());
         cmd.arg("-preset").arg("ultrafast");
         cmd.arg(&record_target);
 
@@ -693,9 +698,10 @@ pub fn finalize_recording_sync(stopped: StoppedRecordingState) -> Result<Recordi
     if stopped.is_gif {
         if let Some(ref temp_mp4) = stopped.temp_video_path {
             if temp_mp4.exists() {
+                let gif_fps = stopped.fps.clamp(15, 50);
                 let filter_graph = format!(
                     "fps={},scale=iw:ih:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff:reserve_transparent=0[p];[s1][p]paletteuse=dither=floyd_steinberg:diff_mode=rectangle",
-                    stopped.fps
+                    gif_fps
                 );
 
                 let _ = Command::new("ffmpeg")

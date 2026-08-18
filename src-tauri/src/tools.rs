@@ -82,15 +82,58 @@ pub fn save_annotated_image(
 
 pub fn show_in_folder(path: &str) -> Result<(), String> {
     let p = Path::new(path);
-    if let Some(parent) = p.parent() {
-        open::that(parent).map_err(|e| e.to_string())?;
+    let target_dir = if p.is_dir() {
+        p.to_path_buf()
+    } else if let Some(parent) = p.parent() {
+        if parent.as_os_str().is_empty() {
+            PathBuf::from(".")
+        } else {
+            parent.to_path_buf()
+        }
     } else {
-        open::that(path).map_err(|e| e.to_string())?;
+        PathBuf::from(path)
+    };
+
+    if let Ok(abs_path) = fs::canonicalize(p) {
+        let uri = format!("file://{}", abs_path.to_string_lossy());
+        if let Ok(out) = Command::new("dbus-send")
+            .args([
+                "--session",
+                "--dest=org.freedesktop.FileManager1",
+                "--type=method_call",
+                "/org/freedesktop/FileManager1",
+                "org.freedesktop.FileManager1.ShowItems",
+                &format!("array:string:{}", uri),
+                "string:\"\"",
+            ])
+            .output()
+        {
+            if out.status.success() {
+                return Ok(());
+            }
+        }
     }
-    Ok(())
+
+    let dir_str = target_dir.to_string_lossy().to_string();
+
+    if let Ok(out) = Command::new("xdg-open").arg(&dir_str).spawn() {
+        let _ = out;
+        return Ok(());
+    }
+
+    if let Ok(out) = Command::new("gio").args(["open", &dir_str]).spawn() {
+        let _ = out;
+        return Ok(());
+    }
+
+    open::that(&target_dir).map_err(|e| e.to_string())
 }
 
 pub fn open_url_browser(url: &str) -> Result<(), String> {
+    if let Ok(out) = Command::new("xdg-open").arg(url).spawn() {
+        let _ = out;
+        return Ok(());
+    }
     open::that(url).map_err(|e| e.to_string())
 }
 

@@ -11,7 +11,7 @@ import {
   FolderOpen,
   Layers,
 } from 'lucide-react';
-import { CaptureResult, RecordingResult, SystemEnvironmentInfo } from '../types';
+import { AppConfig, CaptureResult, RecordingResult, SystemEnvironmentInfo } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 
 interface CaptureCenterProps {
@@ -23,6 +23,7 @@ interface CaptureCenterProps {
   onCopyPath: (path: string) => void;
   onShowInFolder: (path: string) => void;
   environment?: SystemEnvironmentInfo | null;
+  config?: AppConfig | null;
 }
 
 export const CaptureCenter: React.FC<CaptureCenterProps> = ({
@@ -33,6 +34,7 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
   lastRecording,
   onShowInFolder,
   environment,
+  config,
 }) => {
   const [delaySeconds, setDelaySeconds] = useState<number>(0);
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
@@ -300,7 +302,13 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
           <button
-            onClick={() => onStartRecording('gif', 30, false)}
+            onClick={() =>
+              onStartRecording(
+                'gif',
+                config?.recording_fps || 60,
+                config?.recording_include_audio || false
+              )
+            }
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -330,7 +338,7 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
             </div>
             <div>
               <div style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
-                Record Animated GIF
+                Record Animated GIF ({config?.recording_fps || 60} FPS)
               </div>
               <div style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
                 Two-pass optimal palette generation for web and chat sharing
@@ -339,7 +347,13 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
           </button>
 
           <button
-            onClick={() => onStartRecording('mp4', 30, false)}
+            onClick={() =>
+              onStartRecording(
+                'mp4',
+                config?.recording_fps || 60,
+                config?.recording_include_audio || false
+              )
+            }
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -369,10 +383,10 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
             </div>
             <div>
               <div style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
-                Record MP4 Video
+                Record MP4 Video ({config?.recording_fps || 60} FPS)
               </div>
               <div style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-                High framerate H.264 video encoding via wf-recorder and ffmpeg
+                Hardware-accelerated 60/120 FPS video encoding via GPU/wf-recorder
               </div>
             </div>
           </button>

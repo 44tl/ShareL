@@ -1,6 +1,6 @@
 import React from 'react';
 import { Camera, Video, Circle, ShieldCheck, Monitor } from 'lucide-react';
-import { RecordingStatus } from '../types';
+import { AppConfig, RecordingStatus } from '../types';
 
 interface NavbarProps {
   recordingStatus: RecordingStatus;
@@ -8,6 +8,7 @@ interface NavbarProps {
   onStartRecording: (format: string, fps: number, audio: boolean) => void;
   onStopRecording: () => void;
   activeView: string;
+  config?: AppConfig | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onQuickCapture,
   onStartRecording,
   onStopRecording,
+  config,
 }) => {
   const formatSeconds = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -26,7 +28,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (recordingStatus.is_recording) {
       onStopRecording();
     } else {
-      onStartRecording('gif', 30, false);
+      const format = config?.default_recording_format || 'mp4';
+      const fps = config?.recording_fps || 60;
+      const audio = config?.recording_include_audio || false;
+      onStartRecording(format, fps, audio);
     }
   };
 

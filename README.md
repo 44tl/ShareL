@@ -2,6 +2,8 @@
 
 ShareL is a Linux-native desktop application designed for fast screen capture, recording, and custom destination sharing on modern Wayland compositors (**Niri**, **Hyprland**, **Sway**, **GNOME**, **KDE Plasma**, and **COSMIC**). It supports ShareX `.sxcu` custom uploader configurations, full image annotation, automated post-capture workflows, and media encoding.
 
+Current version 1.0.0
+
 <img width="1920" height="972" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/ef84fb54-c7bc-4bf0-8b84-3cce8ae3c609" />
 
 ## Quick Installation

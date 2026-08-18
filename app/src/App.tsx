@@ -637,6 +637,7 @@ export const App: React.FC = () => {
         onStartRecording={handleStartRecording}
         onStopRecording={handleStopRecording}
         activeView={activeView}
+        config={config}
       />
 
       {recordingStatus.is_processing && (
@@ -719,6 +720,7 @@ export const App: React.FC = () => {
               onCopyPath={(p) => handleCopyText(p)}
               onShowInFolder={handleShowInFolder}
               environment={systemEnvironment}
+              config={config}
             />
           )}
 
