@@ -64,6 +64,16 @@ export interface AppConfig {
   default_recording_format: string;
   recording_fps: number;
   recording_include_audio: boolean;
+  recording_bitrate_kbps: number;
+  recording_codec: string;
+  recording_audio_source: string;
+  recording_capture_cursor: boolean;
+  recording_highlight_cursor: boolean;
+  recording_webcam_overlay: boolean;
+  recording_webcam_device: string;
+  recording_webcam_position: string;
+  recording_filename_template: string;
+  recording_auto_upload: boolean;
   after_capture: AfterCaptureTasks;
   after_upload: AfterUploadTasks;
   active_uploader_id: string;
@@ -87,12 +97,38 @@ export interface CaptureResult {
   backend_used?: string;
 }
 
+export interface RecordingOptions {
+  recordings_dir?: string;
+  format: string;
+  fps: number;
+  bitrate_kbps?: number;
+  codec?: string;
+  audio_source?: string;
+  record_microphone?: boolean;
+  record_system_audio?: boolean;
+  separate_audio_tracks?: boolean;
+  capture_cursor?: boolean;
+  highlight_cursor?: boolean;
+  webcam_device?: string;
+  webcam_position?: string;
+  mode: string;
+  region_geometry?: string;
+  preferred_backend?: string;
+  filename_template?: string;
+  auto_upload?: boolean;
+}
+
 export interface RecordingStatus {
   is_recording: boolean;
+  is_paused?: boolean;
   duration_seconds: number;
   output_path?: string;
   format?: string;
   backend?: string;
+  fps?: number;
+  mode?: string;
+  codec?: string;
+  auto_upload?: boolean;
 }
 
 export interface RecordingResult {
@@ -104,6 +140,7 @@ export interface RecordingResult {
   format: string;
   timestamp: number;
   backend_used?: string;
+  auto_upload?: boolean;
 }
 
 export interface CustomUploaderConfig {

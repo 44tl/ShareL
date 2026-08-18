@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { CaptureCenter } from './components/CaptureCenter';
+import { RecordingCenter } from './components/RecordingCenter';
 import { ImageEditor } from './components/ImageEditor';
 import { DestinationsManager } from './components/DestinationsManager';
 import { HistoryGallery } from './components/HistoryGallery';
@@ -14,6 +15,7 @@ import {
   CustomUploaderConfig,
   HistoryItem,
   OcrResult,
+  RecordingOptions,
   RecordingResult,
   RecordingStatus,
   SystemEnvironmentInfo,
@@ -260,12 +262,52 @@ export const App: React.FC = () => {
       });
       setRecordingStatus({
         is_recording: true,
+        is_paused: false,
         duration_seconds: 0,
         format,
+        fps,
       });
       showToast(`Screen recording started (${format.toUpperCase()})`, 'info');
     } catch (err) {
       showToast(`Failed to start recording: ${err}`, 'error');
+    }
+  };
+
+  const handleStartAdvancedRecording = async (options: RecordingOptions) => {
+    try {
+      await invokeCommand('start_screen_recording_advanced', { options });
+      setRecordingStatus({
+        is_recording: true,
+        is_paused: false,
+        duration_seconds: 0,
+        format: options.format,
+        fps: options.fps,
+        mode: options.mode,
+        codec: options.codec,
+      });
+      showToast(`Recording started (${options.mode.toUpperCase()}, ${options.fps} FPS, ${options.format.toUpperCase()})`, 'info');
+    } catch (err) {
+      showToast(`Failed to start recording: ${err}`, 'error');
+    }
+  };
+
+  const handlePauseRecording = async () => {
+    try {
+      await invokeCommand('pause_screen_recording');
+      setRecordingStatus((prev) => ({ ...prev, is_paused: true }));
+      showToast('Recording paused', 'info');
+    } catch (err) {
+      showToast(`Failed to pause recording: ${err}`, 'error');
+    }
+  };
+
+  const handleResumeRecording = async () => {
+    try {
+      await invokeCommand('resume_screen_recording');
+      setRecordingStatus((prev) => ({ ...prev, is_paused: false }));
+      showToast('Recording resumed', 'info');
+    } catch (err) {
+      showToast(`Failed to resume recording: ${err}`, 'error');
     }
   };
 
@@ -275,6 +317,7 @@ export const App: React.FC = () => {
       setLastRecording(result);
       setRecordingStatus({
         is_recording: false,
+        is_paused: false,
         duration_seconds: 0,
       });
       showToast(`Recording saved: ${result.file_name} (${result.duration_seconds}s)`, 'success');
@@ -284,6 +327,7 @@ export const App: React.FC = () => {
       showToast(`Failed to stop recording: ${err}`, 'error');
       setRecordingStatus({
         is_recording: false,
+        is_paused: false,
         duration_seconds: 0,
       });
     }
@@ -577,6 +621,23 @@ export const App: React.FC = () => {
               onCopyPath={(p) => handleCopyText(p)}
               onShowInFolder={handleShowInFolder}
               environment={systemEnvironment}
+            />
+          )}
+
+          {activeView === 'recording' && (
+            <RecordingCenter
+              config={config}
+              recordingStatus={recordingStatus}
+              onStartAdvancedRecording={handleStartAdvancedRecording}
+              onStopRecording={handleStopRecording}
+              onPauseRecording={handlePauseRecording}
+              onResumeRecording={handleResumeRecording}
+              lastRecording={lastRecording}
+              onShowInFolder={handleShowInFolder}
+              onUploadFile={(p) => handleUploadFile(p)}
+              uploaders={uploaders}
+              environment={systemEnvironment}
+              onUpdateConfig={handleUpdateConfig}
             />
           )}
 

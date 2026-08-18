@@ -316,40 +316,109 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               Recording Framerate
             </label>
             <CustomDropdown
-              value={config.recording_fps}
+              value={config.recording_fps || 60}
               onChange={(val) => handleChange('recording_fps', Number(val))}
               options={[
-                { value: 15, label: '15 FPS (Smooth GIF)' },
-                { value: 30, label: '30 FPS (Standard Video)' },
-                { value: 60, label: '60 FPS (High Motion)' },
+                { value: 15, label: '15 FPS' },
+                { value: 30, label: '30 FPS' },
+                { value: 60, label: '60 FPS (Fluid)' },
+                { value: 120, label: '120 FPS (Ultra)' },
               ]}
             />
           </div>
 
           <div>
             <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
-              Audio Recording
+              Video Codec
             </label>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginTop: '10px',
-                fontSize: '13px',
-                color: 'var(--md-sys-color-on-surface)',
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={config.recording_include_audio}
-                onChange={(e) => handleChange('recording_include_audio', e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
-              />
-              <span>Record PulseAudio / PipeWire audio stream</span>
-            </label>
+            <CustomDropdown
+              value={config.recording_codec || 'h264'}
+              onChange={(val) => handleChange('recording_codec', val)}
+              options={[
+                { value: 'h264', label: 'H.264 (Universal)' },
+                { value: 'hevc', label: 'H.265 / HEVC' },
+                { value: 'av1', label: 'AV1' },
+                { value: 'vp9', label: 'VP9' },
+              ]}
+            />
           </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
+              Video Bitrate
+            </label>
+            <CustomDropdown
+              value={config.recording_bitrate_kbps || 8000}
+              onChange={(val) => handleChange('recording_bitrate_kbps', Number(val))}
+              options={[
+                { value: 2500, label: '2.5 Mbps' },
+                { value: 5000, label: '5.0 Mbps' },
+                { value: 8000, label: '8.0 Mbps' },
+                { value: 12000, label: '12.0 Mbps' },
+                { value: 20000, label: '20.0 Mbps' },
+              ]}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
+              Audio Source
+            </label>
+            <CustomDropdown
+              value={config.recording_audio_source || 'none'}
+              onChange={(val) => handleChange('recording_audio_source', val)}
+              options={[
+                { value: 'none', label: 'No Audio (Muted)' },
+                { value: 'system', label: 'Desktop / System Audio' },
+                { value: 'microphone', label: 'Microphone Voice' },
+                { value: 'both', label: 'System + Microphone' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              backgroundColor: 'var(--md-sys-color-surface-container-high)',
+              border: '1px solid var(--md-sys-color-outline-variant)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface)' }}>Capture Mouse Cursor</span>
+            <input
+              type="checkbox"
+              checked={config.recording_capture_cursor ?? true}
+              onChange={(e) => handleChange('recording_capture_cursor', e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
+            />
+          </label>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              backgroundColor: 'var(--md-sys-color-surface-container-high)',
+              border: '1px solid var(--md-sys-color-outline-variant)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface)' }}>Auto-Upload Recording</span>
+            <input
+              type="checkbox"
+              checked={config.recording_auto_upload ?? false}
+              onChange={(e) => handleChange('recording_auto_upload', e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
+            />
+          </label>
         </div>
       </div>
 

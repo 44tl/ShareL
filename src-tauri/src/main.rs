@@ -6,6 +6,7 @@ use sharel_lib::capture::{
 use sharel_lib::config::load_config;
 use sharel_lib::environment::get_system_environment_info;
 use sharel_lib::history::{add_history_item, HistoryItem};
+use sharel_lib::recorder::{start_recording_advanced, stop_recording, RecordingOptions};
 use sharel_lib::tools::extract_text_ocr;
 use sharel_lib::uploader::{execute_upload, list_custom_uploaders};
 use std::env;
@@ -18,6 +19,7 @@ fn print_help() {
     println!("COMMANDS:");
     println!("  gui                       Launch the interactive desktop interface (default)");
     println!("  capture, -c [MODE]        Take a screenshot (region, fullscreen, window, active)");
+    println!("  record, -r [MODE]         Record video/GIF (fullscreen, region, window)");
     println!("  upload, -u [FILE]         Upload a file to the active or specified destination");
     println!("  ocr [FILE]                Extract text from an image using OCR");
     println!("  uploaders, -l             List all configured ShareX upload destinations");
@@ -30,10 +32,18 @@ fn print_help() {
     println!("  --format, -f [FORMAT]     Image format: png, jpg, webp (default: png)");
     println!("  --backend, -b [BACKEND]   Override backend: auto, grim_slurp, xdg_desktop_portal, compositor");
     println!("  --uploader [ID]           Specific destination ID to upload to\n");
+    println!("RECORDING OPTIONS:");
+    println!("  --fps [FPS]               Framerate: 30, 60, 120 (default: 60)");
+    println!("  --codec [CODEC]           Video codec: h264, hevc, av1, vp9 (default: h264)");
+    println!("  --format, -f [FORMAT]     Output format: mp4, mkv, webm, gif (default: mp4)");
+    println!("  --audio [SOURCE]          Audio source: none, mic, system, both (default: none)");
+    println!("  --no-cursor               Hide mouse cursor during recording");
+    println!("  --upload, -u              Automatically upload recording after stopping\n");
     println!("EXAMPLES:");
     println!("  sharel capture region");
     println!("  sharel capture fullscreen --upload");
-    println!("  sharel capture region -d 3 -u");
+    println!("  sharel record window --fps 60");
+    println!("  sharel record region --format gif");
     println!("  sharel info");
     println!("  sharel upload ~/Pictures/photo.png");
     println!("  sharel ocr ~/Pictures/receipt.png");
@@ -159,6 +169,98 @@ async fn run_cli(args: Vec<String>) {
                 }
                 Err(e) => {
                     eprintln!("Upload error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "record" | "-r" => {
+            let mode_str = args.get(2).map(|s| s.as_str()).unwrap_or("fullscreen");
+            let mut format = "mp4".to_string();
+            let mut fps = 60u32;
+            let mut codec = "h264".to_string();
+            let mut audio = "none".to_string();
+            let mut cursor = true;
+            let mut auto_upload = false;
+
+            let mut i = 3;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--format" | "-f" if i + 1 < args.len() => {
+                        format = args[i + 1].clone();
+                        i += 1;
+                    }
+                    "--fps" if i + 1 < args.len() => {
+                        if let Ok(val) = args[i + 1].parse::<u32>() {
+                            fps = val;
+                        }
+                        i += 1;
+                    }
+                    "--codec" if i + 1 < args.len() => {
+                        codec = args[i + 1].clone();
+                        i += 1;
+                    }
+                    "--audio" | "-a" if i + 1 < args.len() => {
+                        audio = args[i + 1].clone();
+                        i += 1;
+                    }
+                    "--no-cursor" => cursor = false,
+                    "--upload" | "-u" => auto_upload = true,
+                    _ => {}
+                }
+                i += 1;
+            }
+
+            let cfg = load_config();
+            let opts = RecordingOptions {
+                recordings_dir: cfg.recordings_directory.clone(),
+                format: format.clone(),
+                fps,
+                bitrate_kbps: Some(cfg.recording_bitrate_kbps),
+                codec: Some(codec),
+                audio_source: Some(audio),
+                record_microphone: false,
+                record_system_audio: false,
+                separate_audio_tracks: false,
+                capture_cursor: cursor,
+                highlight_cursor: false,
+                webcam_device: None,
+                webcam_position: Some("bottom_right".to_string()),
+                mode: mode_str.to_string(),
+                region_geometry: None,
+                preferred_backend: Some(cfg.preferred_recording_backend.clone()),
+                filename_template: Some(cfg.recording_filename_template.clone()),
+                auto_upload,
+            };
+
+            println!("Starting Wayland recording ({:?}, {} fps, {})...", mode_str, fps, format);
+            println!("Press Ctrl+C to stop recording.");
+
+            if let Err(e) = start_recording_advanced(opts) {
+                eprintln!("Failed to start recording: {}", e);
+                std::process::exit(1);
+            }
+
+            tokio::signal::ctrl_c().await.ok();
+            println!("\nStopping recording and processing file...");
+
+            match stop_recording() {
+                Ok(result) => {
+                    println!("Recording saved: {} ({} seconds)", result.file_path, result.duration_seconds);
+                    if auto_upload {
+                        let uploaders = list_custom_uploaders();
+                        if let Some(uploader) = uploaders.into_iter().find(|u| u.id == cfg.active_uploader_id) {
+                            println!("Uploading recording to {}...", uploader.name);
+                            if let Ok(res) = execute_upload(&uploader, &result.file_path).await {
+                                if let Some(ref url) = res.url {
+                                    println!("Uploaded URL: {}", url);
+                                    let _ = copy_text_to_clipboard(url);
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to stop recording: {}", e);
                     std::process::exit(1);
                 }
             }

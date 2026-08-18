@@ -16,7 +16,10 @@ use history::{
     add_history_item, clear_history, delete_history_item, load_history,
     toggle_favorite_history_item, update_history_item, HistoryItem,
 };
-use recorder::{get_recording_status, start_recording, stop_recording, RecordingResult, RecordingStatus};
+use recorder::{
+    get_recording_status, list_webcam_devices, pause_recording, resume_recording, start_recording,
+    start_recording_advanced, stop_recording, RecordingOptions, RecordingResult, RecordingStatus,
+};
 use std::path::Path;
 use std::sync::Mutex;
 use tauri::image::Image;
@@ -303,6 +306,31 @@ fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Resu
 }
 
 #[tauri::command]
+fn start_screen_recording_advanced(options: RecordingOptions) -> Result<(), String> {
+    let mut opts = options;
+    if opts.recordings_dir.is_empty() {
+        let cfg = load_config();
+        opts.recordings_dir = cfg.recordings_directory;
+    }
+    start_recording_advanced(opts)
+}
+
+#[tauri::command]
+fn pause_screen_recording() -> Result<(), String> {
+    pause_recording()
+}
+
+#[tauri::command]
+fn resume_screen_recording() -> Result<(), String> {
+    resume_recording()
+}
+
+#[tauri::command]
+fn list_webcam_devices_cmd() -> Vec<String> {
+    list_webcam_devices()
+}
+
+#[tauri::command]
 fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, String> {
     let result = stop_recording()?;
 
@@ -327,6 +355,20 @@ fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, Strin
     let _ = add_history_item(history_item);
 
     notify_history_changed(&app);
+
+    let cfg = load_config();
+    if (result.auto_upload || cfg.recording_auto_upload) && !cfg.active_uploader_id.is_empty() {
+        let uploader = list_custom_uploaders()
+            .into_iter()
+            .find(|u| u.id == cfg.active_uploader_id);
+        if let Some(uploader) = uploader {
+            let handle = app.clone();
+            let file_path = result.file_path.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = perform_upload(&handle, uploader, &file_path).await;
+            });
+        }
+    }
 
     Ok(result)
 }
@@ -539,6 +581,10 @@ pub fn run() {
             update_app_config,
             capture_screen,
             start_screen_recording,
+            start_screen_recording_advanced,
+            pause_screen_recording,
+            resume_screen_recording,
+            list_webcam_devices_cmd,
             stop_screen_recording,
             get_recording_state,
             list_uploaders,

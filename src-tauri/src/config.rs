@@ -78,6 +78,26 @@ pub struct AppConfig {
     pub default_recording_format: String,
     pub recording_fps: u32,
     pub recording_include_audio: bool,
+    #[serde(default = "default_recording_bitrate")]
+    pub recording_bitrate_kbps: u32,
+    #[serde(default = "default_recording_codec")]
+    pub recording_codec: String,
+    #[serde(default = "default_audio_source")]
+    pub recording_audio_source: String,
+    #[serde(default = "default_bool_true")]
+    pub recording_capture_cursor: bool,
+    #[serde(default)]
+    pub recording_highlight_cursor: bool,
+    #[serde(default)]
+    pub recording_webcam_overlay: bool,
+    #[serde(default = "default_webcam_device")]
+    pub recording_webcam_device: String,
+    #[serde(default = "default_webcam_position")]
+    pub recording_webcam_position: String,
+    #[serde(default = "default_filename_template")]
+    pub recording_filename_template: String,
+    #[serde(default)]
+    pub recording_auto_upload: bool,
     pub after_capture: AfterCaptureTasks,
     pub after_upload: AfterUploadTasks,
     pub active_uploader_id: String,
@@ -93,6 +113,34 @@ pub struct AppConfig {
 
 fn default_backend_auto() -> String {
     "auto".to_string()
+}
+
+fn default_recording_bitrate() -> u32 {
+    8000
+}
+
+fn default_recording_codec() -> String {
+    "h264".to_string()
+}
+
+fn default_audio_source() -> String {
+    "none".to_string()
+}
+
+fn default_bool_true() -> bool {
+    true
+}
+
+fn default_webcam_device() -> String {
+    "/dev/video0".to_string()
+}
+
+fn default_webcam_position() -> String {
+    "bottom_right".to_string()
+}
+
+fn default_filename_template() -> String {
+    "ShareL_Rec_{date}_{time}".to_string()
 }
 
 impl Default for AppConfig {
@@ -114,9 +162,19 @@ impl Default for AppConfig {
             recordings_directory: videos_dir,
             file_naming_pattern: "%Y-%m-%d_%H-%M-%S".to_string(),
             default_image_format: "png".to_string(),
-            default_recording_format: "gif".to_string(),
-            recording_fps: 30,
+            default_recording_format: "mp4".to_string(),
+            recording_fps: 60,
             recording_include_audio: false,
+            recording_bitrate_kbps: 8000,
+            recording_codec: "h264".to_string(),
+            recording_audio_source: "none".to_string(),
+            recording_capture_cursor: true,
+            recording_highlight_cursor: false,
+            recording_webcam_overlay: false,
+            recording_webcam_device: "/dev/video0".to_string(),
+            recording_webcam_position: "bottom_right".to_string(),
+            recording_filename_template: "ShareL_Rec_{date}_{time}".to_string(),
+            recording_auto_upload: false,
             after_capture: AfterCaptureTasks::default(),
             after_upload: AfterUploadTasks::default(),
             active_uploader_id: "default_sxcu".to_string(),

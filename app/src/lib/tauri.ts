@@ -18,9 +18,19 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
         recordings_directory: '/home/user/Videos/Recordings/ShareL',
         file_naming_pattern: '%Y-%m-%d_%H-%M-%S',
         default_image_format: 'png',
-        default_recording_format: 'gif',
-        recording_fps: 30,
+        default_recording_format: 'mp4',
+        recording_fps: 60,
         recording_include_audio: false,
+        recording_bitrate_kbps: 8000,
+        recording_codec: 'h264',
+        recording_audio_source: 'none',
+        recording_capture_cursor: true,
+        recording_highlight_cursor: false,
+        recording_webcam_overlay: false,
+        recording_webcam_device: '/dev/video0',
+        recording_webcam_position: 'bottom_right',
+        recording_filename_template: 'ShareL_Rec_{date}_{time}',
+        recording_auto_upload: false,
         after_capture: {
           copy_to_clipboard: true,
           save_to_file: true,
@@ -80,23 +90,34 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
     }
 
     case 'start_screen_recording':
+    case 'start_screen_recording_advanced':
+    case 'pause_screen_recording':
+    case 'resume_screen_recording':
       return Promise.resolve(undefined as unknown as T);
+
+    case 'list_webcam_devices_cmd':
+      return Promise.resolve(['/dev/video0', '/dev/video1'] as unknown as T);
 
     case 'stop_screen_recording':
       return Promise.resolve({
         id: crypto.randomUUID(),
-        file_path: `/tmp/ShareL_Recording_${Date.now()}.gif`,
-        file_name: `ShareL_Recording_${Date.now()}.gif`,
-        file_size: 1240000,
-        duration_seconds: 5,
-        format: 'gif',
+        file_path: `/tmp/ShareL_Recording_${Date.now()}.mp4`,
+        file_name: `ShareL_Recording_${Date.now()}.mp4`,
+        file_size: 2450000,
+        duration_seconds: 6,
+        format: 'mp4',
         timestamp: Math.floor(Date.now() / 1000),
+        backend_used: 'gpu-screen-recorder',
       } as unknown as T);
 
     case 'get_recording_state':
       return Promise.resolve({
         is_recording: false,
+        is_paused: false,
         duration_seconds: 0,
+        fps: 60,
+        mode: 'fullscreen',
+        codec: 'h264',
       } as unknown as T);
 
     case 'list_uploaders':
@@ -173,13 +194,13 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
         },
         {
           id: 'hist-2',
-          title: 'ShareL_Recording_2026-08-18_02-45-00.gif',
-          file_path: '/home/user/Videos/Recordings/ShareL/ShareL_Recording_2026-08-18_02-45-00.gif',
-          file_name: 'ShareL_Recording_2026-08-18_02-45-00.gif',
-          file_size: 2150000,
+          title: 'ShareL_Recording_2026-08-18_02-45-00.mp4',
+          file_path: '/home/user/Videos/Recordings/ShareL/ShareL_Recording_2026-08-18_02-45-00.mp4',
+          file_name: 'ShareL_Recording_2026-08-18_02-45-00.mp4',
+          file_size: 3450000,
           item_type: 'recording',
-          format: 'gif',
-          duration_seconds: 8,
+          format: 'mp4',
+          duration_seconds: 12,
           timestamp: Math.floor(Date.now() / 1000) - 1500,
           is_favorite: false,
         },

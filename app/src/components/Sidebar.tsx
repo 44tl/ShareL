@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Camera,
+  Video,
   Edit3,
   CloudUpload,
   Clock,
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'capture', label: 'Capture Hub', icon: Camera },
+    { id: 'recording', label: 'Recording Studio', icon: Video },
     { id: 'editor', label: 'Image Editor', icon: Edit3 },
     { id: 'destinations', label: 'Destinations (.sxcu)', icon: CloudUpload },
     { id: 'history', label: 'History Gallery', icon: Clock },
