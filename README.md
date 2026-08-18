@@ -14,26 +14,6 @@ Run the automated installer script:
 curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 ```
 
-## First-Class Wayland Architecture & Backends
-
-ShareL detects your Wayland compositor automatically and routes captures through the most efficient available backend:
-
-```text
-Backend Architecture
-├── XDG Desktop Portal (ashpd screenshot & screencast API)
-├── grim/slurp (Direct Wayland screencopy & interactive region selection)
-├── gpu-screen-recorder (Hardware-accelerated NVENC / VAAPI video recording)
-├── wf-recorder (Wayland screencopy video/GIF recorder)
-└── Compositor-Specific Integration
-    ├── Niri (`niri msg action screenshot`, `screenshot-screen`, `screenshot-window`)
-    ├── Hyprland (`hyprctl activewindow -j` window geometry tracking)
-    ├── Sway (`swaymsg -t get_tree` tree introspection)
-    ├── COSMIC (`cosmic-comp` / `cosmic-screenshot` portal integration)
-    ├── GNOME (Mutter Portal & Shell DBus)
-    ├── KDE Plasma (KWin Portal & Spectacle DBus)
-    └── Generic Wayland Fallback (Standard wlroots / screencopy protocol)
-```
-
 ## Features
 
 ### Capture and Recording
