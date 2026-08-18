@@ -36,6 +36,7 @@ fn update_app_config(config: AppConfig) -> Result<(), String> {
     save_config(&config)
 }
 
+// TODO: hmm.. maybe change these?
 #[tauri::command]
 async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> Result<CaptureResult, String> {
     let cfg = load_config();
@@ -95,6 +96,7 @@ fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Resu
 fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, String> {
     let result = stop_recording()?;
 
+    // might need to find better solution
     let history_item = HistoryItem {
         id: result.id.clone(),
         title: result.file_name.clone(),
