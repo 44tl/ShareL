@@ -68,6 +68,8 @@ pub fn update_history_item(id: &str, upload_url: Option<String>, deletion_url: O
     save_history(&items)
 }
 
+// fucking hate rust.
+
 pub fn toggle_favorite_history_item(id: &str) -> Result<bool, String> {
     let mut items = load_history();
     let mut new_val = false;
