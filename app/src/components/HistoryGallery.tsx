@@ -13,6 +13,7 @@ import {
   List,
 } from 'lucide-react';
 import { HistoryItem } from '../types';
+import { invokeCommand } from '../lib/tauri';
 
 interface HistoryGalleryProps {
   items: HistoryItem[];
@@ -26,12 +27,68 @@ interface HistoryGalleryProps {
   onClearAll: () => Promise<void>;
 }
 
+const HistoryThumbnail: React.FC<{ item: HistoryItem }> = ({ item }) => {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [hasError, setHasError] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (item.file_path && !hasError) {
+      invokeCommand<string>('get_file_data_url', { filePath: item.file_path })
+        .then((url) => {
+          if (isMounted) setDataUrl(url);
+        })
+        .catch(() => {
+          if (isMounted) setHasError(true);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [item.file_path]);
+
+  if (dataUrl && item.item_type === 'image') {
+    return (
+      <img
+        src={dataUrl}
+        alt={item.file_name}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+      />
+    );
+  }
+
+  if (dataUrl && item.item_type === 'recording' && item.format === 'gif') {
+    return (
+      <img
+        src={dataUrl}
+        alt={item.file_name}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+      />
+    );
+  }
+
+  return item.item_type === 'image' ? (
+    <ImageIcon size={32} color="var(--md-sys-color-primary)" />
+  ) : (
+    <Video size={32} color="var(--md-sys-color-warning)" />
+  );
+};
+
 export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
   items,
   onOpenInEditor,
   onCopyImage,
   onCopyText,
   onShowInFolder,
+  onOpenLink,
   onToggleFavorite,
   onDeleteItem,
   onClearAll,
@@ -223,13 +280,10 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
-                  {item.item_type === 'image' ? (
-                    <ImageIcon size={32} color="var(--md-sys-color-primary)" />
-                  ) : (
-                    <Video size={32} color="var(--md-sys-color-warning)" />
-                  )}
+                  <HistoryThumbnail item={item} />
 
                   <button
                     onClick={() => onToggleFavorite(item.id)}
@@ -241,6 +295,7 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
                       padding: '5px',
                       borderRadius: '50%',
                       color: item.is_favorite ? 'var(--md-sys-color-warning)' : 'var(--md-sys-color-on-surface-muted)',
+                      zIndex: 2,
                     }}
                   >
                     <Star size={14} fill={item.is_favorite ? 'currentColor' : 'none'} />
@@ -251,81 +306,95 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
                       position: 'absolute',
                       bottom: '8px',
                       left: '8px',
-                      fontSize: '10px',
-                      fontWeight: 600,
                       backgroundColor: 'rgba(17, 19, 24, 0.85)',
-                      color: 'var(--md-sys-color-on-surface)',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-xs)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      color: 'var(--md-sys-color-primary)',
+                      zIndex: 2,
                     }}
                   >
-                    {item.format.toUpperCase()}
+                    {item.format}
                   </span>
                 </div>
 
                 <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)', wordBreak: 'break-all', lineHeight: 1.3 }}>
                     {item.file_name}
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)' }}>
+                  <div style={{ fontSize: '11.5px', color: 'var(--md-sys-color-on-surface-muted)', display: 'flex', justifyContent: 'space-between' }}>
                     <span>{formatBytes(item.file_size)}</span>
                     <span>{formatDate(item.timestamp)}</span>
                   </div>
 
                   {item.upload_url && (
-                    <a
-                      href={item.upload_url}
-                      target="_blank"
-                      rel="noreferrer"
+                    <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '11px',
-                        color: 'var(--md-sys-color-primary)',
-                        textDecoration: 'none',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        justifyContent: 'space-between',
+                        backgroundColor: 'var(--md-sys-color-surface-container-high)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '6px 8px',
+                        fontSize: '11.5px',
                       }}
                     >
-                      <ExternalLink size={12} />
-                      <span>{item.upload_url}</span>
-                    </a>
+                      <span
+                        style={{
+                          color: 'var(--md-sys-color-primary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '170px',
+                        }}
+                      >
+                        {item.upload_url}
+                      </span>
+                      <button
+                        onClick={() => onOpenLink(item.upload_url!)}
+                        style={{ color: 'var(--md-sys-color-on-surface-muted)' }}
+                      >
+                        <ExternalLink size={13} />
+                      </button>
+                    </div>
                   )}
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid var(--md-sys-color-outline-variant)' }}>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {item.item_type === 'image' && (
-                        <button
-                          onClick={() => onOpenInEditor(item.file_path)}
-                          title="Edit"
-                          style={{ padding: '4px', color: 'var(--md-sys-color-primary)' }}
-                        >
-                          <Edit3 size={14} />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => onOpenInEditor(item.file_path)}
+                            style={{ padding: '5px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-on-surface-variant)' }}
+                            title="Edit"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            onClick={() => onCopyImage(item.file_path)}
+                            style={{ padding: '5px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-on-surface-variant)' }}
+                            title="Copy Image"
+                          >
+                            <Clipboard size={14} />
+                          </button>
+                        </>
                       )}
                       <button
-                        onClick={() => onCopyImage(item.file_path)}
-                        title="Copy"
-                        style={{ padding: '4px', color: 'var(--md-sys-color-on-surface-variant)' }}
-                      >
-                        <Clipboard size={14} />
-                      </button>
-                      <button
                         onClick={() => onShowInFolder(item.file_path)}
-                        title="Reveal in Folder"
-                        style={{ padding: '4px', color: 'var(--md-sys-color-on-surface-variant)' }}
+                        style={{ padding: '5px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-on-surface-variant)' }}
+                        title="Show in Folder"
                       >
                         <FolderOpen size={14} />
                       </button>
                     </div>
 
                     <button
-                      onClick={() => onDeleteItem(item.id, true)}
+                      onClick={() => onDeleteItem(item.id, false)}
+                      style={{ padding: '5px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-error)' }}
                       title="Delete"
-                      style={{ padding: '4px', color: 'var(--md-sys-color-error)' }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -335,7 +404,7 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
             ))}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {filteredItems.map((item) => (
               <div
                 key={item.id}
@@ -343,47 +412,53 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '10px 16px',
                   backgroundColor: 'var(--md-sys-color-surface-container)',
-                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--md-sys-color-outline-variant)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px 16px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {item.item_type === 'image' ? (
-                    <ImageIcon size={18} color="var(--md-sys-color-primary)" />
-                  ) : (
-                    <Video size={18} color="var(--md-sys-color-warning)" />
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--md-sys-color-on-surface)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-xs)', overflow: 'hidden', backgroundColor: 'var(--md-sys-color-surface-container-highest)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <HistoryThumbnail item={item} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       {item.file_name}
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)' }}>
-                      {formatBytes(item.file_size)} • {formatDate(item.timestamp)}
-                    </span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)', display: 'flex', gap: '12px' }}>
+                      <span>{formatBytes(item.file_size)}</span>
+                      <span>{formatDate(item.timestamp)}</span>
+                      <span>{item.format.toUpperCase()}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {item.upload_url && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => onToggleFavorite(item.id)}
+                    style={{ padding: '6px', borderRadius: 'var(--radius-xs)', color: item.is_favorite ? 'var(--md-sys-color-warning)' : 'var(--md-sys-color-on-surface-muted)' }}
+                  >
+                    <Star size={14} fill={item.is_favorite ? 'currentColor' : 'none'} />
+                  </button>
+                  {item.item_type === 'image' && (
                     <button
-                      onClick={() => onCopyText(item.upload_url!)}
-                      style={{
-                        fontSize: '11px',
-                        color: 'var(--md-sys-color-primary)',
-                        backgroundColor: 'var(--md-sys-color-surface-container-high)',
-                        padding: '3px 8px',
-                        borderRadius: 'var(--radius-pill)',
-                      }}
+                      onClick={() => onOpenInEditor(item.file_path)}
+                      style={{ padding: '6px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-on-surface-variant)' }}
                     >
-                      Copy URL
+                      <Edit3 size={14} />
                     </button>
                   )}
-                  <button onClick={() => onShowInFolder(item.file_path)} style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>
+                  <button
+                    onClick={() => onShowInFolder(item.file_path)}
+                    style={{ padding: '6px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-on-surface-variant)' }}
+                  >
                     <FolderOpen size={14} />
                   </button>
-                  <button onClick={() => onDeleteItem(item.id, true)} style={{ color: 'var(--md-sys-color-error)' }}>
+                  <button
+                    onClick={() => onDeleteItem(item.id, false)}
+                    style={{ padding: '6px', borderRadius: 'var(--radius-xs)', color: 'var(--md-sys-color-error)' }}
+                  >
                     <Trash2 size={14} />
                   </button>
                 </div>

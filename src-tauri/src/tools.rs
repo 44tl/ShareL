@@ -21,6 +21,27 @@ pub struct OcrResult {
     pub error: Option<String>,
 }
 
+pub fn read_file_as_data_url(file_path: &str) -> Result<String, String> {
+    let path = Path::new(file_path);
+    if !path.exists() {
+        return Err("File not found".to_string());
+    }
+
+    let bytes = fs::read(path).map_err(|e| e.to_string())?;
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("png").to_lowercase();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "mp4" => "video/mp4",
+        "webm" => "video/webm",
+        _ => "image/png",
+    };
+
+    let b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes);
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
 pub fn save_annotated_image(
     data_url: &str,
     save_dir: &str,
@@ -59,20 +80,26 @@ pub fn save_annotated_image(
     Ok(out_path.to_string_lossy().to_string())
 }
 
-pub fn extract_text_ocr(image_path: &str) -> OcrResult {
-    let has_tess = Command::new("which").arg("tesseract").output().map(|o| o.status.success()).unwrap_or(false);
-
-    if !has_tess {
-        return OcrResult {
-            success: false,
-            text: String::new(),
-            error: Some("Tesseract OCR is not installed. Install it with your package manager: sudo pacman -S tesseract".to_string()),
-        };
+pub fn show_in_folder(path: &str) -> Result<(), String> {
+    let p = Path::new(path);
+    if let Some(parent) = p.parent() {
+        open::that(parent).map_err(|e| e.to_string())?;
+    } else {
+        open::that(path).map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
 
+pub fn open_url_browser(url: &str) -> Result<(), String> {
+    open::that(url).map_err(|e| e.to_string())
+}
+
+pub fn extract_text_ocr(image_path: &str) -> OcrResult {
     let output = Command::new("tesseract")
         .arg(image_path)
         .arg("stdout")
+        .arg("-l")
+        .arg("eng")
         .output();
 
     match output {
@@ -85,31 +112,22 @@ pub fn extract_text_ocr(image_path: &str) -> OcrResult {
                     error: None,
                 }
             } else {
-                let err = String::from_utf8_lossy(&out.stderr).to_string();
+                let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
                 OcrResult {
                     success: false,
                     text: String::new(),
-                    error: Some(err),
+                    error: Some(if err.is_empty() {
+                        "Tesseract OCR failed".to_string()
+                    } else {
+                        err
+                    }),
                 }
             }
         }
         Err(e) => OcrResult {
             success: false,
             text: String::new(),
-            error: Some(e.to_string()),
+            error: Some(format!("Tesseract not found: {}", e)),
         },
     }
-}
-
-pub fn show_in_folder(path_str: &str) -> Result<(), String> {
-    let p = Path::new(path_str);
-    if let Some(parent) = p.parent() {
-        open::that(parent).map_err(|e| e.to_string())
-    } else {
-        open::that(p).map_err(|e| e.to_string())
-    }
-}
-
-pub fn open_url_browser(url: &str) -> Result<(), String> {
-    open::that(url).map_err(|e| e.to_string())
 }

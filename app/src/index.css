@@ -83,20 +83,13 @@ input:focus, select:focus, textarea:focus {
   background-color: var(--md-sys-color-surface-container-high);
 }
 
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--md-sys-color-background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--md-sys-color-surface-container-highest);
-  border-radius: var(--radius-pill);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--md-sys-color-outline);
+  display: none;
+  width: 0;
+  height: 0;
 }

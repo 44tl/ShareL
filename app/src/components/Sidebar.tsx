@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Camera,
   Edit3,
@@ -8,6 +8,8 @@ import {
   Settings,
   Clipboard,
   Save,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { AppConfig, CustomUploaderConfig } from '../types';
 
@@ -28,6 +30,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleAfterCapture,
   onSelectUploader,
 }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const navItems = [
     { id: 'capture', label: 'Capture Hub', icon: Camera },
     { id: 'editor', label: 'Image Editor', icon: Edit3 },
@@ -36,6 +41,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'tools', label: 'Tools', icon: Wrench },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  const activeUploader = uploaders.find((u) => u.id === config?.active_uploader_id) || uploaders[0];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <aside
@@ -87,7 +104,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
         <div
+          ref={dropdownRef}
           style={{
+            position: 'relative',
             backgroundColor: 'var(--md-sys-color-surface-container)',
             borderRadius: 'var(--radius-md)',
             padding: '14px',
@@ -107,25 +126,82 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Active Destination
           </div>
 
-          <select
-            value={config?.active_uploader_id || ''}
-            onChange={(e) => onSelectUploader(e.target.value)}
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
             style={{
               width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               backgroundColor: 'var(--md-sys-color-surface-container-high)',
               color: 'var(--md-sys-color-on-surface)',
               border: '1px solid var(--md-sys-color-outline-variant)',
               borderRadius: 'var(--radius-sm)',
-              padding: '6px 8px',
-              fontSize: '12px',
+              padding: '8px 12px',
+              fontSize: '12.5px',
+              fontWeight: 500,
             }}
           >
-            {uploaders.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.Name}
-              </option>
-            ))}
-          </select>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeUploader ? activeUploader.Name : 'Select Destination'}
+            </span>
+            <ChevronDown size={14} color="var(--md-sys-color-on-surface-muted)" />
+          </button>
+
+          {dropdownOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '100%',
+                left: '0',
+                right: '0',
+                marginBottom: '6px',
+                backgroundColor: 'var(--md-sys-color-surface-container-highest)',
+                border: '1px solid var(--md-sys-color-outline)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                zIndex: 100,
+                maxHeight: '200px',
+                overflowY: 'auto',
+                padding: '4px',
+              }}
+            >
+              {uploaders.map((u) => {
+                const isSelected = u.id === (config?.active_uploader_id || uploaders[0]?.id);
+                return (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      onSelectUploader(u.id);
+                      setDropdownOpen(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 10px',
+                      borderRadius: 'var(--radius-xs)',
+                      backgroundColor: isSelected ? 'var(--md-sys-color-primary-container)' : 'transparent',
+                      color: isSelected ? 'var(--md-sys-color-on-primary-container)' : 'var(--md-sys-color-on-surface)',
+                      fontSize: '12px',
+                      fontWeight: isSelected ? 600 : 400,
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--md-sys-color-surface-container-high)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span>{u.Name}</span>
+                    {isSelected && <Check size={14} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div
@@ -149,26 +225,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Quick Workflow
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                padding: '6px 4px',
+                borderRadius: 'var(--radius-xs)',
                 fontSize: '12.5px',
-                color: 'var(--md-sys-color-on-surface-variant)',
+                color: 'var(--md-sys-color-on-surface)',
                 cursor: 'pointer',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clipboard size={14} color="var(--md-sys-color-primary)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Clipboard size={15} color="var(--md-sys-color-primary)" />
                 <span>Clipboard</span>
               </div>
               <input
                 type="checkbox"
                 checked={config?.after_capture.copy_to_clipboard ?? true}
                 onChange={() => onToggleAfterCapture('copy_to_clipboard')}
-                style={{ cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
               />
             </label>
 
@@ -177,20 +255,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                padding: '6px 4px',
+                borderRadius: 'var(--radius-xs)',
                 fontSize: '12.5px',
-                color: 'var(--md-sys-color-on-surface-variant)',
+                color: 'var(--md-sys-color-on-surface)',
                 cursor: 'pointer',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Save size={14} color="var(--md-sys-color-primary)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Save size={15} color="var(--md-sys-color-primary)" />
                 <span>Save to File</span>
               </div>
               <input
                 type="checkbox"
                 checked={config?.after_capture.save_to_file ?? true}
                 onChange={() => onToggleAfterCapture('save_to_file')}
-                style={{ cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
               />
             </label>
 
@@ -199,20 +279,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                padding: '6px 4px',
+                borderRadius: 'var(--radius-xs)',
                 fontSize: '12.5px',
-                color: 'var(--md-sys-color-on-surface-variant)',
+                color: 'var(--md-sys-color-on-surface)',
                 cursor: 'pointer',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Edit3 size={14} color="var(--md-sys-color-primary)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Edit3 size={15} color="var(--md-sys-color-primary)" />
                 <span>Open in Editor</span>
               </div>
               <input
                 type="checkbox"
                 checked={config?.after_capture.open_in_editor ?? true}
                 onChange={() => onToggleAfterCapture('open_in_editor')}
-                style={{ cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
               />
             </label>
 
@@ -221,20 +303,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                padding: '6px 4px',
+                borderRadius: 'var(--radius-xs)',
                 fontSize: '12.5px',
-                color: 'var(--md-sys-color-on-surface-variant)',
+                color: 'var(--md-sys-color-on-surface)',
                 cursor: 'pointer',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CloudUpload size={14} color="var(--md-sys-color-primary)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CloudUpload size={15} color="var(--md-sys-color-primary)" />
                 <span>Auto Upload</span>
               </div>
               <input
                 type="checkbox"
                 checked={config?.after_capture.upload_to_host ?? false}
                 onChange={() => onToggleAfterCapture('upload_to_host')}
-                style={{ cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--md-sys-color-primary)' }}
               />
             </label>
           </div>

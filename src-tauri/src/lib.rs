@@ -16,7 +16,7 @@ use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
-use tools::{extract_text_ocr, open_url_browser, save_annotated_image, show_in_folder, OcrResult};
+use tools::{extract_text_ocr, open_url_browser, read_file_as_data_url, save_annotated_image, show_in_folder, OcrResult};
 use uploader::{
     delete_custom_uploader, execute_upload, list_custom_uploaders, parse_sxcu_file,
     save_custom_uploader, CustomUploaderConfig, UploadResult,
@@ -220,6 +220,11 @@ fn ocr_image(image_path: String) -> OcrResult {
     extract_text_ocr(&image_path)
 }
 
+#[tauri::command]
+fn get_file_data_url(file_path: String) -> Result<String, String> {
+    read_file_as_data_url(&file_path)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -287,7 +292,8 @@ pub fn run() {
             copy_text,
             show_file_in_folder,
             open_link,
-            ocr_image
+            ocr_image,
+            get_file_data_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running ShareL application");
