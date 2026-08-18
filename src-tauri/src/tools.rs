@@ -3,17 +3,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ColorResult {
-    pub hex: String,
-    pub rgb: String,
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OcrResult {
     pub success: bool,

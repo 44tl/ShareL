@@ -522,7 +522,7 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
 
         let child = cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?;
         (child, "wf-recorder".to_string())
-    } else if has_ffmpeg {
+    } else if std::env::var("WAYLAND_DISPLAY").is_err() && std::env::var("DISPLAY").is_ok() && has_ffmpeg {
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-y");
 
@@ -568,7 +568,7 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         let child = cmd.spawn().map_err(|e| format!("Failed to spawn ffmpeg recorder: {}", e))?;
         (child, "ffmpeg".to_string())
     } else {
-        return Err("No supported screen recorder backend (gpu-screen-recorder, wf-recorder, or ffmpeg) found on this system.".to_string());
+        return Err("No supported Wayland screen recorder found. Please install 'gpu-screen-recorder' (recommended) or 'wf-recorder'.".to_string());
     };
 
     *state_lock = Some(RecordingState {
@@ -655,11 +655,26 @@ pub fn stop_recording_process() -> Result<StoppedRecordingState, String> {
     }
 
     let start_wait = std::time::Instant::now();
+    let mut sent_sigterm = false;
+
     loop {
         match state.child.try_wait() {
             Ok(Some(_)) => break,
             Ok(None) => {
-                if start_wait.elapsed().as_millis() > 3000 {
+                let elapsed = start_wait.elapsed().as_millis();
+                if elapsed > 4500 {
+                    #[cfg(unix)]
+                    {
+                        let pid = state.child.id() as i32;
+                        if pid > 1 {
+                            unsafe {
+                                libc::kill(pid, libc::SIGKILL);
+                            }
+                        }
+                    }
+                    let _ = state.child.wait();
+                    break;
+                } else if elapsed > 2500 && !sent_sigterm {
                     #[cfg(unix)]
                     {
                         let pid = state.child.id() as i32;
@@ -669,8 +684,7 @@ pub fn stop_recording_process() -> Result<StoppedRecordingState, String> {
                             }
                         }
                     }
-                    let _ = state.child.wait();
-                    break;
+                    sent_sigterm = true;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(50));
             }

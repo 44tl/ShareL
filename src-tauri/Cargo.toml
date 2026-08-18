@@ -31,7 +31,6 @@ base64 = "0.22"
 dirs = "5.0"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 arboard = "3.4"
-tempfile = "3.12"
 open = "5.3"
 libc = "0.2"
 ashpd = { version = "0.9", default-features = false, features = ["tokio"] }
