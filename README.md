@@ -1,5 +1,7 @@
 ShareL is the Linux-native counterpart to ShareX, designed for speed, reliability, and modern Wayland compositors (GNOME, KDE Plasma, Sway, and Hyprland). It provides full compatibility with ShareX `.sxcu` custom uploader files, instant screen annotations, automated capture workflows, and fast media encoding.
 
+<img width="1917" height="1041" alt="Screenshot From 2026-08-18 04-09-45" src="https://github.com/user-attachments/assets/c19ad0b4-9abb-4614-af77-e724f064c1ac" />
+
 ## Quick Installation
 
 ```bash
