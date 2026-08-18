@@ -8,7 +8,7 @@ use sharel_lib::environment::get_system_environment_info;
 use sharel_lib::history::{add_history_item, HistoryItem};
 use sharel_lib::recorder::{start_recording_advanced, stop_recording, RecordingOptions};
 use sharel_lib::tools::extract_text_ocr;
-use sharel_lib::uploader::{execute_upload, list_custom_uploaders};
+use sharel_lib::uploader::{execute_upload, list_custom_uploaders, resolve_active_uploader};
 use std::env;
 use std::path::Path;
 
@@ -138,11 +138,7 @@ async fn run_cli(args: Vec<String>) {
             };
 
             let cfg = load_config();
-            let uploaders = list_custom_uploaders();
-            let target_uploader = uploaders
-                .into_iter()
-                .find(|u| u.id == cfg.active_uploader_id)
-                .or_else(|| list_custom_uploaders().into_iter().next());
+            let target_uploader = resolve_active_uploader(&cfg.active_uploader_id);
 
             let uploader = match target_uploader {
                 Some(u) => u,
@@ -247,8 +243,7 @@ async fn run_cli(args: Vec<String>) {
                 Ok(result) => {
                     println!("Recording saved: {} ({} seconds)", result.file_path, result.duration_seconds);
                     if auto_upload {
-                        let uploaders = list_custom_uploaders();
-                        if let Some(uploader) = uploaders.into_iter().find(|u| u.id == cfg.active_uploader_id) {
+                        if let Some(uploader) = resolve_active_uploader(&cfg.active_uploader_id) {
                             println!("Uploading recording to {}...", uploader.name);
                             if let Ok(res) = execute_upload(&uploader, &result.file_path).await {
                                 if let Some(ref url) = res.url {
@@ -344,8 +339,7 @@ async fn run_cli(args: Vec<String>) {
 
                     if do_upload || cfg.after_capture.upload_to_host {
                         let uploader_id = custom_uploader_id.unwrap_or(cfg.active_uploader_id.clone());
-                        let uploaders = list_custom_uploaders();
-                        if let Some(uploader) = uploaders.into_iter().find(|u| u.id == uploader_id) {
+                        if let Some(uploader) = resolve_active_uploader(&uploader_id) {
                             println!("Uploading to {}...", uploader.name);
                             if let Ok(upload_res) = execute_upload(&uploader, &result.file_path).await {
                                 if let Some(ref url) = upload_res.url {

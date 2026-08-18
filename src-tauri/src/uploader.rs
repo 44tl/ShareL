@@ -136,6 +136,16 @@ pub fn list_custom_uploaders() -> Vec<CustomUploaderConfig> {
     uploaders
 }
 
+pub fn resolve_active_uploader(active_id: &str) -> Option<CustomUploaderConfig> {
+    let uploaders = list_custom_uploaders();
+    if !active_id.is_empty() {
+        if let Some(uploader) = uploaders.iter().find(|u| u.id == active_id) {
+            return Some(uploader.clone());
+        }
+    }
+    uploaders.into_iter().next()
+}
+
 pub fn save_custom_uploader(uploader: &CustomUploaderConfig) -> Result<(), String> {
     let dir = get_uploaders_dir();
     let filename = format!("{}.sxcu", uploader.id);

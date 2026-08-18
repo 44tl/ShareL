@@ -31,7 +31,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tools::{extract_text_ocr, open_url_browser, read_file_as_data_url, save_annotated_image, show_in_folder, OcrResult};
 use uploader::{
     delete_custom_uploader, execute_upload_with_progress, list_custom_uploaders, parse_sxcu_file,
-    save_custom_uploader, CustomUploaderConfig, UploadResult,
+    resolve_active_uploader, save_custom_uploader, CustomUploaderConfig, UploadResult,
 };
 
 static REGISTERED_SHORTCUTS: Mutex<Vec<Shortcut>> = Mutex::new(Vec::new());
@@ -89,10 +89,7 @@ fn upload_last_capture(app: &tauri::AppHandle) {
         return;
     };
     let cfg = load_config();
-    let Some(uploader) = list_custom_uploaders()
-        .into_iter()
-        .find(|u| u.id == cfg.active_uploader_id)
-    else {
+    let Some(uploader) = resolve_active_uploader(&cfg.active_uploader_id) else {
         return;
     };
     let handle = app.clone();
@@ -277,11 +274,8 @@ async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> R
 
     notify_history_changed(&app);
 
-    if cfg.after_capture.upload_to_host && !cfg.active_uploader_id.is_empty() {
-        let uploader = list_custom_uploaders()
-            .into_iter()
-            .find(|u| u.id == cfg.active_uploader_id);
-        if let Some(uploader) = uploader {
+    if cfg.after_capture.upload_to_host {
+        if let Some(uploader) = resolve_active_uploader(&cfg.active_uploader_id) {
             let handle = app.clone();
             let file_path = result.file_path.clone();
             tauri::async_runtime::spawn(async move {
@@ -391,11 +385,8 @@ fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, Strin
                 notify_history_changed(&handle);
 
                 let cfg = load_config();
-                if (result.auto_upload || cfg.recording_auto_upload) && !cfg.active_uploader_id.is_empty() {
-                    let uploader = list_custom_uploaders()
-                        .into_iter()
-                        .find(|u| u.id == cfg.active_uploader_id);
-                    if let Some(uploader) = uploader {
+                if result.auto_upload || cfg.recording_auto_upload {
+                    if let Some(uploader) = resolve_active_uploader(&cfg.active_uploader_id) {
                         let app_handle = handle.clone();
                         let file_path = result.file_path.clone();
                         tauri::async_runtime::spawn(async move {
@@ -434,11 +425,8 @@ fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, Strin
         notify_history_changed(&app);
 
         let cfg = load_config();
-        if (result.auto_upload || cfg.recording_auto_upload) && !cfg.active_uploader_id.is_empty() {
-            let uploader = list_custom_uploaders()
-                .into_iter()
-                .find(|u| u.id == cfg.active_uploader_id);
-            if let Some(uploader) = uploader {
+        if result.auto_upload || cfg.recording_auto_upload {
+            if let Some(uploader) = resolve_active_uploader(&cfg.active_uploader_id) {
                 let handle = app.clone();
                 let file_path = result.file_path.clone();
                 tauri::async_runtime::spawn(async move {
@@ -480,11 +468,8 @@ fn import_sxcu_file(content: String) -> Result<CustomUploaderConfig, String> {
 
 #[tauri::command]
 async fn upload_file(app: tauri::AppHandle, uploader_id: String, file_path: String) -> Result<UploadResult, String> {
-    let uploaders = list_custom_uploaders();
-    let uploader = uploaders
-        .into_iter()
-        .find(|u| u.id == uploader_id)
-        .ok_or_else(|| "Uploader configuration not found".to_string())?;
+    let uploader = resolve_active_uploader(&uploader_id)
+        .ok_or_else(|| "No uploader configuration found".to_string())?;
 
     perform_upload(&app, uploader, &file_path).await
 }
