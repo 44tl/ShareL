@@ -33,6 +33,24 @@ fn print_help() {
     println!("  sharel ocr ~/Pictures/receipt.png");
 }
 
+fn init_gui_env() {
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+    if std::env::var_os("G_MESSAGES_DEBUG").is_none() {
+        std::env::set_var("G_MESSAGES_DEBUG", "");
+    }
+    glib::log_set_writer_func(|level, fields| {
+        let is_gtk_domain = fields.iter().any(|f| {
+            f.key() == "GLIB_DOMAIN" && f.value_str() == Some("Gtk")
+        });
+        if is_gtk_domain && (level == glib::LogLevel::Warning || level == glib::LogLevel::Message || level == glib::LogLevel::Info) {
+            return glib::LogWriterOutput::Handled;
+        }
+        glib::log_writer_default(level, fields)
+    });
+}
+
 #[tokio::main]
 async fn run_cli(args: Vec<String>) {
     let command = args.get(1).map(|s| s.as_str()).unwrap_or("gui");
@@ -202,9 +220,7 @@ async fn run_cli(args: Vec<String>) {
             }
         }
         "gui" | _ => {
-            if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
-                std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-            }
+            init_gui_env();
             sharel_lib::run();
         }
     }
@@ -215,9 +231,7 @@ fn main() {
     if args.len() > 1 && args[1] != "gui" {
         run_cli(args);
     } else {
-        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
-            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-        }
+        init_gui_env();
         sharel_lib::run();
     }
 }
