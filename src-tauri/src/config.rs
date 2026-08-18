@@ -1,6 +1,15 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+
+fn write_secret_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    fs::write(path, contents).map_err(|e| e.to_string())?;
+    let mut perms = fs::metadata(path).map_err(|e| e.to_string())?.permissions();
+    perms.set_mode(0o600);
+    fs::set_permissions(path, perms).map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AfterCaptureTasks {
@@ -214,5 +223,5 @@ pub fn load_config() -> AppConfig {
 pub fn save_config(config: &AppConfig) -> Result<(), String> {
     let path = get_config_path();
     let json = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+    write_secret_file(&path, json.as_bytes())
 }

@@ -8,10 +8,31 @@ ShareL is a modern desktop application built for high-performance screen capture
 
 ## Quick Installation
 
-Run the automated installer script:
+Run the automated installer script. It fetches the latest source, installs system
+dependencies with your package manager, compiles the frontend and native binary,
+and installs `sharel` into `~/.local/bin`:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
+```
+
+The installer accepts the following options:
+
+```bash
+# Skip system dependency installation
+./install.sh --no-deps
+
+# Skip compilation and install an already-built binary
+./install.sh --no-build
+
+# Reinstall even if ShareL is already present
+./install.sh --force
+
+# Install binaries into a custom prefix (default: ~/.local/bin)
+./install.sh --prefix /opt
+
+# Show help
+./install.sh --help
 ```
 
 ## Features

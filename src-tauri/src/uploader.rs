@@ -11,6 +11,18 @@ use std::time::Instant;
 use tokio::io::{AsyncRead, ReadBuf};
 use tokio_util::io::ReaderStream;
 
+fn write_secret_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    fs::write(path, contents).map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(path).map_err(|e| e.to_string())?.permissions();
+        perms.set_mode(0o600);
+        fs::set_permissions(path, perms).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomUploaderConfig {
     pub id: String,
@@ -176,7 +188,7 @@ pub fn save_custom_uploader(uploader: &CustomUploaderConfig) -> Result<(), Strin
     let filename = format!("{}.sxcu", uploader.id);
     let path = dir.join(filename);
     let json = serde_json::to_string_pretty(uploader).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+    write_secret_file(&path, json.as_bytes())
 }
 
 pub fn delete_custom_uploader(id: &str) -> Result<(), String> {

@@ -143,9 +143,7 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
           DestinationType: 'ImageUploader',
           RequestMethod: 'POST',
           RequestURL: 'https://api.imgur.com/3/image',
-          Headers: {
-            Authorization: 'Client-ID 1234567890abcdef',
-          },
+          Headers: {},
           Parameters: {},
           Arguments: {},
           Body: 'MultipartFormData',
@@ -162,10 +160,10 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
     case 'upload_file':
       return Promise.resolve({
         success: true,
-        url: 'https://i.freeimage.host/sharel-demo-capture.png',
-        thumbnail_url: 'https://i.freeimage.host/sharel-demo-thumb.png',
-        deletion_url: 'https://freeimage.host/viewer/demo-id',
-        raw_response: '{"status_code":200,"image":{"url":"https://i.freeimage.host/sharel-demo-capture.png"}}',
+        url: 'https://example.com/uploaded/demo-capture.png',
+        thumbnail_url: 'https://example.com/uploaded/demo-thumb.png',
+        deletion_url: 'https://example.com/uploaded/demo-id',
+        raw_response: '{"status_code":200,"image":{"url":"https://example.com/uploaded/demo-capture.png"}}',
         status_code: 200,
         duration_ms: 480,
       } as unknown as T);
@@ -183,7 +181,7 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
           width: 1920,
           height: 1080,
           timestamp: Math.floor(Date.now() / 1000) - 600,
-          upload_url: 'https://i.freeimage.host/demo-1.png',
+          upload_url: 'https://example.com/uploaded/demo-1.png',
           is_favorite: true,
         },
         {
