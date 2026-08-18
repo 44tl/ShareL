@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ShareL - High Performance Screen Capture &amp; ShareX Companion for Linux</title>
   <meta name="description"
-    content="ShareL brings complete ShareX custom destination and workflow support to modern Linux Wayland desktops with sub-millisecond captures and two-pass palettegen GIF encoding.">
+    content="ShareL brings complete ShareX custom destination and workflow support to modern Linux Wayland desktops with sub-millisecond captures and native stream recording.">
   <link rel="icon" type="image/svg+xml" href="sharel-logo.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -40,7 +40,7 @@
         <div class="tag">Native Wayland Capture Engine</div>
         <h1>The High Speed ShareX Suite <span>Built for Linux</span></h1>
         <p class="hero-desc">
-          Engineered in Rust for zero latency. Direct XDG Desktop Portal integration, ShareX custom destination compatibility, custom domain routing, and hardware accelerated recording.
+          Engineered in Rust for zero latency. Direct XDG Desktop Portal integration, ShareX custom destination compatibility, custom domain routing, and native in-process recording.
         </p>
 
         <div class="hero-actions">
@@ -88,7 +88,7 @@
           <div style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
             <div style="font-size: 32px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono'; margin-bottom: 6px;">&lt; 50ms</div>
             <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Capture Latency</div>
-            <div style="font-size: 12px; color: var(--text-muted);">Direct memory buffer dispatch via native Wayland protocols.</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Direct memory buffer dispatch via native Wayland portal protocols.</div>
           </div>
 
           <div style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
@@ -128,7 +128,7 @@
               </svg>
             </div>
             <h3>Universal Wayland Architecture</h3>
-            <p>Seamlessly handles Mutter (GNOME), KWin (KDE Plasma), and wlroots (Sway, Hyprland) using adaptive portal and grim pipelines.</p>
+            <p>Seamlessly handles Mutter (GNOME), KWin (KDE Plasma), and wlroots (Sway, Hyprland) using native desktop portal streams.</p>
           </div>
 
           <div class="feature-card">
@@ -327,12 +327,12 @@
           <div
             style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px;">
             <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Arch Linux / Manjaro</div>
-            <code style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo pacman -S grim slurp wf-recorder ffmpeg</code>
+            <code style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo pacman -S gstreamer gst-plugins-base gst-plugins-good gst-plugin-pipewire ffmpeg</code>
           </div>
           <div
             style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px;">
             <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Fedora / RHEL</div>
-            <code style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo dnf install grim slurp wf-recorder ffmpeg</code>
+            <code style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo dnf install gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good ffmpeg</code>
           </div>
         </div>
       </div>

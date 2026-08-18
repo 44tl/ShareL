@@ -1,6 +1,6 @@
 ShareL is the Linux-native counterpart to ShareX, designed for speed, reliability, and modern Wayland compositors (GNOME, KDE Plasma, Sway, and Hyprland). It provides full compatibility with ShareX `.sxcu` custom uploader files, instant screen annotations, automated capture workflows, and fast media encoding.
 
-<img width="1917" height="1041" alt="Screenshot From 2026-08-18 04-09-45" src="https://github.com/user-attachments/assets/c19ad0b4-9abb-4614-af77-e724f064c1ac" />
+<img width="1917" height="1041" alt="ShareL Desktop App" src="https://github.com/user-attachments/assets/c19ad0b4-9abb-4614-af77-e724f064c1ac" />
 
 ## Quick Installation
 
@@ -10,29 +10,31 @@ curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 
 ## Key Capabilities
 
-### Wayland Screen Capture & Recording
-- **Wayland Native**: Optimized for XDG Desktop Portal (`ashpd`), `grim`, and `slurp` for sub-millisecond region and window capture.
-- **Capture Modes**: Region (interactive area selection with geometry overlay), Fullscreen, and Window.
-- **Recording Engine**: High-performance animated GIF recording with two-pass palettegen optimization and MP4/WebM video recording using `wf-recorder` and `ffmpeg`.
-- **Capture Timer**: Configurable delay timer (0s to 5s) for menus, tooltips, and temporary UI states.
+### Native Wayland Capture & Recording
+- **Universal Wayland Portal**: Direct XDG Desktop Portal integration for sub-millisecond region, window, and fullscreen capture.
+- **In-Process Stream Recording**: Native GStreamer PipeWire pipeline producing MP4 video and animated GIFs with two-pass palette optimization.
+- **Configurable Timer**: Capture delay timer (0s to 5s) for menus, tooltips, and dynamic UI elements.
 
 ### Interactive Image Annotation Editor
-- **Vector Tools**: Arrows with directional heads, rectangles, circles, lines, pen brush, and semi-transparent highlighters.
-- **Step Badges**: Auto-incrementing numbered markers (1, 2, 3...) for instructional guides and bug reporting.
-- **Pixelation Filter**: True pixelate and blur tool for sensitive data, API keys, and passwords.
-- **Typography & Cropping**: Text callouts with background pills and draggable boundary cropping.
-- **Direct Actions**: Instant copy, save, or direct upload with one click.
+- **Vector Annotation Tools**: Directional arrows, rectangles, circles, lines, pen brush, and semi-transparent highlighters.
+- **Step Badges**: Auto-incrementing numbered markers (1, 2, 3...) for reproduction steps and guides.
+- **Pixelation Filter**: Instant obfuscation for tokens, passwords, and sensitive areas.
+- **Text & Cropping**: Text callouts and boundary cropping.
+- **Full History**: Keyboard undo (`Ctrl + Z`) and redo (`Ctrl + Y` / `Ctrl + Shift + Z`).
 
 ### ShareX Custom Uploader (.sxcu) Engine
 - **100% Compatibility**: Import existing `.sxcu` destination configurations directly from ShareX.
-- **Response Extraction**: Parse upload links, thumbnails, and deletion URLs using JSONPath (`$json:path$`), regex groups (`$regex:1$`), and response headers (`$header:Location$`).
-- **Live Test Inspector**: Built-in interactive uploader tester displaying response status, duration, and raw payload.
+- **Custom Domains**: Prepend vanity domains and CDN URLs to response tokens.
+- **Dynamic Extraction**: Parse responses with JSONPath (`$json:path$`), regex groups (`$regex:1$`), and response headers (`$header:Location$`).
+- **Live Test Inspector**: Built-in test sandbox displaying HTTP status, roundtrip latency, and response payloads.
 
 ### Productivity Tools & History
 - **Screen Color Picker**: Instant sampling with HEX, RGB, RGBA, and HSL formats.
 - **Pixel Ruler**: Real-time screen dimension, area, diagonal, and aspect ratio calculator.
-- **OCR Text Extraction**: Extract readable text from screenshots and images via Tesseract.
-- **QR Code Studio**: Live QR code generator and reader.
+- **OCR Text Extraction**: Extract readable text from screenshots via Tesseract.
+- **QR Studio**: Live QR generator and scanner.
+- **Timeline Gallery**: Searchable capture history with favorites and quick actions.
+
 ### Command Line Interface (CLI)
 ShareL can be triggered from global desktop keybinds, scripts, or terminal:
 - `sharel capture region`: Take an interactive region screenshot.
@@ -47,7 +49,7 @@ ShareL can be triggered from global desktop keybinds, scripts, or terminal:
 ## Installation & Requirements
 
 ### System Dependencies
-ShareL uses native Wayland XDG Desktop Portal and GStreamer PipeWire pipelines directly within the Rust binary:
+ShareL uses native Wayland XDG Desktop Portal and GStreamer PipeWire pipelines directly within the binary:
 
 - **Arch Linux**:
   ```bash
@@ -66,7 +68,7 @@ ShareL uses native Wayland XDG Desktop Portal and GStreamer PipeWire pipelines d
 
 ---
 
-## Development & Build (You will have a headache)
+## Development & Build
 
 ### Running Locally
 ```bash
