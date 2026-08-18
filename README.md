@@ -4,7 +4,7 @@ ShareL is a Linux-native desktop application designed for fast screen capture, r
 
 Current version 1.0.0
 
-<img width="1920" height="972" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/ef84fb54-c7bc-4bf0-8b84-3cce8ae3c609" />
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/546ec53a-cabb-4365-97f0-415b43b78889" />
 
 ## Quick Installation
 
