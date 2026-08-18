@@ -31,3 +31,4 @@ open = "5.3"
 libc = "0.2"
 ashpd = { version = "0.9", default-features = false, features = ["tokio"] }
 url = "2.5"
+glib = "0.18"

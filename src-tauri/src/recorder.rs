@@ -90,23 +90,66 @@ pub fn start_recording(
         final_path.clone()
     };
 
-    let mut cmd = Command::new("wf-recorder");
-    cmd.arg("-f").arg(&record_target);
-    cmd.arg("-r").arg(fps.to_string());
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_lowercase();
+    let is_gnome = desktop.contains("gnome");
 
-    if let Some(geom) = region {
-        if !geom.trim().is_empty() {
-            cmd.arg("-g").arg(geom);
+    let has_gpu_recorder = Command::new("which")
+        .arg("gpu-screen-recorder")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    let has_wf = Command::new("which")
+        .arg("wf-recorder")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    let child = if is_gnome && has_gpu_recorder {
+        let mut cmd = Command::new("gpu-screen-recorder");
+        cmd.arg("-w").arg("portal");
+        cmd.arg("-f").arg(fps.max(10).min(60).to_string());
+        cmd.arg("-o").arg(&record_target);
+        if include_audio {
+            cmd.arg("-a").arg("default_output");
         }
-    }
+        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder on GNOME: {}", e))?
+    } else if has_wf && !is_gnome {
+        let mut cmd = Command::new("wf-recorder");
+        cmd.arg("-f").arg(&record_target);
+        cmd.arg("-r").arg(fps.max(10).min(60).to_string());
 
-    if include_audio {
-        cmd.arg("-a");
-    }
+        if let Some(geom) = region {
+            if !geom.trim().is_empty() {
+                cmd.arg("-g").arg(geom);
+            }
+        }
 
-    let child = cmd.spawn().map_err(|e| {
-        format!("Failed to spawn wf-recorder. Please ensure wf-recorder is installed: {}", e)
-    })?;
+        if include_audio {
+            cmd.arg("-a");
+        }
+
+        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
+    } else if has_gpu_recorder {
+        let mut cmd = Command::new("gpu-screen-recorder");
+        cmd.arg("-w").arg("screen");
+        cmd.arg("-f").arg(fps.max(10).min(60).to_string());
+        cmd.arg("-o").arg(&record_target);
+        if include_audio {
+            cmd.arg("-a").arg("default_output");
+        }
+        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
+    } else if has_wf {
+        let mut cmd = Command::new("wf-recorder");
+        cmd.arg("-f").arg(&record_target);
+        cmd.arg("-r").arg(fps.max(10).min(60).to_string());
+        if include_audio {
+            cmd.arg("-a");
+        }
+        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
+    } else {
+        return Err("No supported Wayland screen recorder found. Please install gpu-screen-recorder or wf-recorder.".to_string());
+    };
 
     *state_lock = Some(RecordingState {
         child,
@@ -139,7 +182,7 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
     if state.is_gif {
         if let Some(ref temp_mp4) = state.temp_video_path {
             if temp_mp4.exists() {
-                let palette_path = std::env::temp_dir().join("sharel_palette.png");
+                let palette_path = std::env::temp_dir().join(format!("sharel_palette_{}.png", uuid::Uuid::new_v4()));
 
                 let gen_status = Command::new("ffmpeg")
                     .args([
@@ -153,7 +196,7 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
                     .status();
 
                 if gen_status.map(|s| s.success()).unwrap_or(false) && palette_path.exists() {
-                    Command::new("ffmpeg")
+                    let _ = Command::new("ffmpeg")
                         .args([
                             "-y",
                             "-i",
@@ -164,12 +207,11 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
                             "fps=15,scale=flags=lanczos [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=3",
                             state.output_path.to_str().unwrap_or(""),
                         ])
-                        .status()
-                        .ok();
+                        .status();
 
-                    fs::remove_file(palette_path).ok();
+                    let _ = fs::remove_file(palette_path);
                 } else {
-                    Command::new("ffmpeg")
+                    let _ = Command::new("ffmpeg")
                         .args([
                             "-y",
                             "-i",
@@ -178,17 +220,16 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
                             "fps=12",
                             state.output_path.to_str().unwrap_or(""),
                         ])
-                        .status()
-                        .ok();
+                        .status();
                 }
 
-                fs::remove_file(temp_mp4).ok();
+                let _ = fs::remove_file(temp_mp4);
             }
         }
     }
 
     if !state.output_path.exists() {
-        return Err("Recording output file was not produced".to_string());
+        return Err("Recording output file was not produced.".to_string());
     }
 
     let metadata = fs::metadata(&state.output_path).map_err(|e| e.to_string())?;

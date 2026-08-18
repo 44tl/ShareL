@@ -41,10 +41,13 @@ fn init_gui_env() {
         std::env::set_var("G_MESSAGES_DEBUG", "");
     }
     glib::log_set_writer_func(|level, fields| {
-        let is_gtk_domain = fields.iter().any(|f| {
-            f.key() == "GLIB_DOMAIN" && f.value_str() == Some("Gtk")
+        let is_gtk_or_indicator = fields.iter().any(|f| {
+            let key = f.key();
+            let val = f.value_str().unwrap_or_default();
+            (key == "GLIB_DOMAIN" && (val == "Gtk" || val.contains("appindicator") || val.contains("ayatana")))
+                || (key == "MESSAGE" && val.contains("deprecated"))
         });
-        if is_gtk_domain && (level == glib::LogLevel::Warning || level == glib::LogLevel::Message || level == glib::LogLevel::Info) {
+        if is_gtk_or_indicator && (level == glib::LogLevel::Warning || level == glib::LogLevel::Message || level == glib::LogLevel::Info) {
             return glib::LogWriterOutput::Handled;
         }
         glib::log_writer_default(level, fields)

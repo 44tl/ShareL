@@ -58,6 +58,19 @@ pub fn copy_text_to_clipboard(text: &str) -> Result<(), String> {
     clipboard.set_text(text).map_err(|e| e.to_string())
 }
 
+fn try_capture_with_gnome_shell(target_path: &Path) -> Result<(), String> {
+    let output = Command::new("gnome-screenshot")
+        .args(["-f", target_path.to_str().unwrap_or_default()])
+        .output();
+
+    if let Ok(o) = output {
+        if o.status.success() && target_path.exists() {
+            return Ok(());
+        }
+    }
+    Err("gnome-screenshot unavailable or failed".to_string())
+}
+
 fn try_capture_with_grim(mode: &CaptureMode, target_path: &Path) -> Result<(), String> {
     match mode {
         CaptureMode::Region => {
@@ -125,7 +138,7 @@ fn try_capture_with_grim(mode: &CaptureMode, target_path: &Path) -> Result<(), S
 }
 
 async fn capture_with_xdg_portal(interactive: bool, target_path: &Path) -> Result<(), String> {
-    let req = Screenshot::request().interactive(interactive).modal(true);
+    let req = Screenshot::request().interactive(interactive).modal(false);
     let response = req
         .send()
         .await
@@ -161,14 +174,14 @@ pub async fn take_screenshot(
     }
 
     let target_path = generate_file_path(save_dir, format);
-    let has_grim = Command::new("which").arg("grim").output().map(|o| o.status.success()).unwrap_or(false);
-
     let mut captured = false;
-    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_lowercase();
-    let is_gnome = desktop.contains("gnome");
 
-    if !is_gnome && has_grim {
-        if try_capture_with_grim(&mode, &target_path).is_ok() {
+    if try_capture_with_grim(&mode, &target_path).is_ok() {
+        captured = true;
+    }
+
+    if !captured && matches!(mode, CaptureMode::Fullscreen | CaptureMode::ActiveScreen) {
+        if try_capture_with_gnome_shell(&target_path).is_ok() {
             captured = true;
         }
     }

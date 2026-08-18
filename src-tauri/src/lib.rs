@@ -12,6 +12,9 @@ use history::{
     toggle_favorite_history_item, update_history_item, HistoryItem,
 };
 use recorder::{get_recording_status, start_recording, stop_recording, RecordingResult, RecordingStatus};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::Manager;
 use tools::{extract_text_ocr, open_url_browser, save_annotated_image, show_in_folder, OcrResult};
 use uploader::{
     delete_custom_uploader, execute_upload, list_custom_uploaders, parse_sxcu_file,
@@ -219,6 +222,46 @@ fn ocr_image(image_path: String) -> OcrResult {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let show_i = MenuItem::with_id(app, "show", "Open ShareL", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+            let tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            let _ = tray;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_app_config,
             update_app_config,
