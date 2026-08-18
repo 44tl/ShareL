@@ -33,7 +33,14 @@ curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 - **Pixel Ruler**: Real-time screen dimension, area, diagonal, and aspect ratio calculator.
 - **OCR Text Extraction**: Extract readable text from screenshots and images via Tesseract.
 - **QR Code Studio**: Live QR code generator and reader.
-- **Capture Gallery**: Searchable timeline with favorites, file management, and quick actions.
+### Command Line Interface (CLI)
+ShareL can be triggered from global desktop keybinds, scripts, or terminal:
+- `sharel capture region`: Take an interactive region screenshot.
+- `sharel capture fullscreen --upload`: Take a fullscreen screenshot and upload it immediately.
+- `sharel capture region -d 3 -u`: Take a delayed screenshot with automatic upload.
+- `sharel upload /path/to/image.png`: Upload a file to your configured ShareX destination.
+- `sharel ocr /path/to/image.png`: Extract text from an image and copy it to clipboard.
+- `sharel uploaders`: List all configured destinations.
 
 ---
 

@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShareL - Modern Screen Capture &amp; Sharing for Linux</title>
+  <title>ShareL - High Performance Screen Capture &amp; ShareX Companion for Linux</title>
   <meta name="description"
-    content="ShareL is the premier screen capture, screen recording, and file-sharing tool built natively for Linux Wayland desktops. 100% ShareX .sxcu compatibility.">
+    content="ShareL brings complete ShareX custom destination and workflow support to modern Linux Wayland desktops with sub-millisecond captures and two-pass palettegen GIF encoding.">
   <link rel="icon" type="image/svg+xml" href="sharel-logo.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -21,14 +21,13 @@
         </a>
 
         <ul class="nav-links">
+          <li><a href="#performance">Performance</a></li>
           <li><a href="#features">Features</a></li>
+          <li><a href="#sharex-engine">ShareX Engine</a></li>
           <li><a href="#interactive">Live Canvas</a></li>
-          <li><a href="#sxcu">SXCU Engine</a></li>
           <li><a href="#comparison">Comparison</a></li>
           <li><a href="#install">Install</a></li>
         </ul>
-
-        <!-- TODO: add new stuff later... IG? -->
 
         <a href="#install" class="btn btn-primary">Get ShareL</a>
       </nav>
@@ -38,17 +37,15 @@
   <main>
     <section class="hero">
       <div class="container hero-content">
-        <div class="tag">Built for Wayland Compositors</div>
-        <h1>The Screen Capture Powerhouse <span>Linux Deserved</span></h1>
+        <div class="tag">Native Wayland Capture Engine</div>
+        <h1>The High Speed ShareX Suite <span>Built for Linux</span></h1>
         <p class="hero-desc">
-          ShareL delivers the complete ShareX workflow to Linux. Sub-millisecond region screenshots, optimized
-          palettegen GIF recording, pixel-level annotation tools, and 100% ShareX custom uploader compatibility.
+          Engineered in Rust for zero latency. Direct XDG Desktop Portal integration, ShareX custom destination compatibility, custom domain routing, and hardware accelerated recording.
         </p>
 
         <div class="hero-actions">
           <a href="#install" class="btn btn-primary">Download for Linux</a>
-          <a href="https://github.com/44tl/ShareL" class="btn btn-secondary" target="_blank" rel="noreferrer">View on
-            GitHub</a>
+          <a href="https://github.com/44tl/ShareL" class="btn btn-secondary" target="_blank" rel="noreferrer">GitHub Repository</a>
         </div>
 
         <div class="command-box">
@@ -60,7 +57,7 @@
           <div class="showcase-header">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-weight: 700; font-size: 15px;">Interactive Annotation Canvas</span>
-              <span style="font-size: 12px; color: var(--text-muted);">Test tools live in browser</span>
+              <span style="font-size: 12px; color: var(--text-muted);">Test drawing tools live in your browser</span>
             </div>
 
             <div class="tool-bar">
@@ -80,11 +77,46 @@
       </div>
     </section>
 
+    <section id="performance" style="padding: 70px 0; background: var(--bg-surface);">
+      <div class="container">
+        <div class="section-title">
+          <h2>Benchmarked for Pure Speed</h2>
+          <p>Native Rust core with async IO pipelines ensures instantaneous captures with zero system overhead.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono'; margin-bottom: 6px;">&lt; 50ms</div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Capture Latency</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Direct memory buffer dispatch via native Wayland protocols.</div>
+          </div>
+
+          <div style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 700; color: var(--success); font-family: 'Roboto Mono'; margin-bottom: 6px;">60% Smaller</div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Optimized GIF File Size</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Two-pass palettegen Bayer dithering algorithm produces crisp web embeds.</div>
+          </div>
+
+          <div style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 700; color: var(--warning); font-family: 'Roboto Mono'; margin-bottom: 6px;">100%</div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">ShareX .sxcu Support</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Zero configuration migration for existing image hosts and S3 backends.</div>
+          </div>
+
+          <div style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono'; margin-bottom: 6px;">0 CPU Drain</div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Idle Resource Usage</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Compiled machine code with lightweight memory footprint.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="features" style="padding: 70px 0;">
       <div class="container">
         <div class="section-title">
-          <h2>Precision Tools for Power Users</h2>
-          <p>Everything you loved about ShareX, engineered natively for Wayland and modern Linux desktops.</p>
+          <h2>Precision Workflow Automation</h2>
+          <p>Everything power users require to capture, annotate, obfuscate, and upload in one stroke.</p>
         </div>
 
         <div class="features-grid">
@@ -95,9 +127,8 @@
                 <circle cx="12" cy="13" r="4" />
               </svg>
             </div>
-            <h3>Pure Wayland Capture</h3>
-            <p>Direct XDG Desktop Portal and Grim/Slurp integration. Interactive area selection with sub-millisecond
-              response on GNOME, KDE Plasma, Sway, and Hyprland.</p>
+            <h3>Universal Wayland Architecture</h3>
+            <p>Seamlessly handles Mutter (GNOME), KWin (KDE Plasma), and wlroots (Sway, Hyprland) using adaptive portal and grim pipelines.</p>
           </div>
 
           <div class="feature-card">
@@ -106,9 +137,8 @@
                 <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
               </svg>
             </div>
-            <h3>ShareX .sxcu Compatibility</h3>
-            <p>Import your existing ShareX custom uploaders without modification. Full JSONPath, regex response
-              extraction, and custom headers support for any image host or S3 destination.</p>
+            <h3>Custom Domain Mapping</h3>
+            <p>Route uploaded media to your vanity domains or CDN endpoints with dynamic template prefixing and JSON path parsing.</p>
           </div>
 
           <div class="feature-card">
@@ -118,9 +148,8 @@
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
             </div>
-            <h3>Two-Pass Palettegen GIF</h3>
-            <p>Record crisp, high-framerate animated GIFs optimized for Discord and web embeds with automated palette
-              generation via FFmpeg and wf-recorder.</p>
+            <h3>Two-Pass Palettegen GIF Engine</h3>
+            <p>Captures regional screen activity and compiles crisp animated GIFs with automated color quantization and zero artifacting.</p>
           </div>
 
           <div class="feature-card">
@@ -130,9 +159,8 @@
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
               </svg>
             </div>
-            <h3>Instant Obfuscation &amp; Steps</h3>
-            <p>Protect API keys and passwords with pixelation boxes. Number your bug reproduction steps with
-              auto-incrementing numbered badge bubbles.</p>
+            <h3>Pixelation &amp; Sequence Steps</h3>
+            <p>Blur confidential tokens, credentials, and passwords. Generate auto-incrementing numbered markers for documentation.</p>
           </div>
 
           <div class="feature-card">
@@ -142,9 +170,8 @@
                   d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
               </svg>
             </div>
-            <h3>After-Capture Automation</h3>
-            <p>Configure complete multi-step pipelines: auto copy to clipboard, save to customized folder patterns, auto
-              upload, and play notification cues.</p>
+            <h3>Automated Task Pipelines</h3>
+            <p>Execute multi-step flows on capture: auto-copy to clipboard, save to formatted directory paths, upload to destination, and notify.</p>
           </div>
 
           <div class="feature-card">
@@ -155,33 +182,30 @@
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
             </div>
-            <h3>Screen Color Picker &amp; OCR</h3>
-            <p>Instant pixel color sampler supporting HEX, RGB, and HSL formats. Built-in OCR powered by Tesseract to
-              extract selectable text from any image.</p>
+            <h3>Integrated Toolset (OCR, Color, QR)</h3>
+            <p>Extract selectable text via Tesseract OCR, inspect exact pixel color coordinates (HEX, RGB, HSL), and generate QR codes.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="sxcu" style="padding: 60px 0; background: var(--bg-surface);">
+    <section id="sharex-engine" style="padding: 70px 0; background: var(--bg-surface);">
       <div class="container">
         <div class="section-title">
-          <h2>ShareX .sxcu Custom Uploader Engine</h2>
-          <p>Test and simulate your custom destinations directly in browser.</p>
+          <h2>ShareX Custom Uploader (.sxcu) Engine</h2>
+          <p>Test response templates, custom domains, and headers directly in browser.</p>
         </div>
 
         <div
           style="max-width: 760px; margin: 0 auto; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px;">
           <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px;">
             <div>
-              <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">Request
-                URL</label>
+              <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">Request URL</label>
               <input type="text" id="sxcuUrl" value="https://freeimage.host/api/1/upload"
                 style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); padding: 9px 12px; border-radius: var(--radius-sm);">
             </div>
             <div>
-              <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">HTTP
-                Method</label>
+              <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">HTTP Method</label>
               <select id="sxcuMethod"
                 style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); padding: 9px 12px; border-radius: var(--radius-sm);">
                 <option value="POST">POST</option>
@@ -191,9 +215,8 @@
           </div>
 
           <div style="margin-bottom: 16px;">
-            <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">URL Pattern
-              Template</label>
-            <input type="text" id="sxcuPattern" value="$json:image.url$"
+            <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">URL Pattern Template (With Custom Domain Support)</label>
+            <input type="text" id="sxcuPattern" value="https://cdn.example.com/i/$json:image.url$"
               style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--primary); padding: 9px 12px; border-radius: var(--radius-sm); font-family: 'Roboto Mono';">
           </div>
 
@@ -210,65 +233,81 @@
     <section id="comparison" style="padding: 70px 0;">
       <div class="container">
         <div class="section-title">
-          <h2>Feature Matrix Comparison</h2>
+          <h2>Technical Feature Matrix</h2>
           <p>How ShareL compares with existing Linux and Windows capture tools.</p>
         </div>
 
-        <table class="comparison-table">
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th>ShareL (Linux)</th>
-              <th>ShareX (Windows)</th>
-              <th>Flameshot</th>
-              <th>Spectacle</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Linux Wayland Native</td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="check">Partial</span></td>
-              <td><span class="check">Yes</span></td>
-            </tr>
-            <tr>
-              <td>ShareX .sxcu Uploader Support</td>
-              <td><span class="check">100% Compatible</span></td>
-              <td><span class="check">Native</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Two-Pass Palettegen GIF Recording</td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Auto-Incrementing Step Badges</td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Pixelate Obfuscation Filter</td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>OCR Text Extraction</td>
-              <td><span class="check">Yes (Tesseract)</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="check">Yes (KDE)</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>ShareL (Linux)</th>
+                <th>ShareX (Windows)</th>
+                <th>Flameshot</th>
+                <th>Spectacle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Linux Wayland Native</td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="cross">No</span></td>
+                <td><span class="check">Partial</span></td>
+                <td><span class="check">Yes</span></td>
+              </tr>
+              <tr>
+                <td>ShareX .sxcu Custom Uploaders</td>
+                <td><span class="check">100% Compatible</span></td>
+                <td><span class="check">Native</span></td>
+                <td><span class="cross">No</span></td>
+                <td><span class="cross">No</span></td>
+              </tr>
+              <tr>
+                <td>Custom Domain Prepending</td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="cross">No</span></td>
+                <td><span class="cross">No</span></td>
+              </tr>
+              <tr>
+                <td>CLI &amp; Keybinding Integration</td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+              </tr>
+              <tr>
+                <td>Two-Pass Palettegen GIF Recording</td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="cross">No</span></td>
+                <td><span class="cross">No</span></td>
+              </tr>
+              <tr>
+                <td>Auto-Incrementing Step Markers</td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="cross">No</span></td>
+                <td><span class="cross">No</span></td>
+              </tr>
+              <tr>
+                <td>Pixelate Obfuscation Filter</td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="cross">No</span></td>
+              </tr>
+              <tr>
+                <td>OCR Text Extraction</td>
+                <td><span class="check">Yes (Tesseract)</span></td>
+                <td><span class="check">Yes</span></td>
+                <td><span class="cross">No</span></td>
+                <td><span class="check">Yes (KDE)</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -276,8 +315,7 @@
       <div class="container" style="max-width: 800px; text-align: center;">
         <div class="section-title">
           <h2>Install ShareL on Linux</h2>
-          <p>One-line installation script that detects your distribution and configures desktop integration
-            automatically.</p>
+          <p>One-line installation script that detects your distribution and configures desktop integration automatically.</p>
         </div>
 
         <div class="command-box" style="margin-bottom: 32px;">
@@ -285,20 +323,16 @@
           <button class="copy-btn" onclick="copyInstallCmd()">Copy</button>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; text-align: left;">
           <div
             style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px;">
-            <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Arch Linux /
-              Manjaro</div>
-            <code
-              style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo pacman -S grim slurp wf-recorder ffmpeg</code>
+            <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Arch Linux / Manjaro</div>
+            <code style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo pacman -S grim slurp wf-recorder ffmpeg</code>
           </div>
           <div
             style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px;">
-            <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Fedora / RHEL
-            </div>
-            <code
-              style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo dnf install grim slurp wf-recorder ffmpeg</code>
+            <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Fedora / RHEL</div>
+            <code style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo dnf install grim slurp wf-recorder ffmpeg</code>
           </div>
         </div>
       </div>

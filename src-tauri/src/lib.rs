@@ -1,9 +1,9 @@
-mod capture;
-mod config;
-mod history;
-mod recorder;
-mod tools;
-mod uploader;
+pub mod capture;
+pub mod config;
+pub mod history;
+pub mod recorder;
+pub mod tools;
+pub mod uploader;
 
 use capture::{copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot, CaptureMode, CaptureResult};
 use config::{load_config, save_config, AppConfig};
@@ -76,24 +76,14 @@ async fn capture_screen(mode: String, delay_ms: u64) -> Result<CaptureResult, St
 }
 
 #[tauri::command]
-fn start_screen_recording(
-    format: Option<String>,
-    fps: Option<u32>,
-    include_audio: Option<bool>,
-    region: Option<String>,
-) -> Result<(), String> {
+fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Result<(), String> {
     let cfg = load_config();
-    let rec_format = format.unwrap_or(cfg.default_recording_format);
-    let rec_fps = fps.unwrap_or(cfg.recording_fps);
-    let rec_audio = include_audio.unwrap_or(cfg.recording_include_audio);
-
-    start_recording(&cfg.recordings_directory, &rec_format, rec_fps, rec_audio, region)
+    start_recording(&cfg.recordings_directory, &format, fps, include_audio, None)
 }
 
 #[tauri::command]
 fn stop_screen_recording() -> Result<RecordingResult, String> {
     let result = stop_recording()?;
-    let cfg = load_config();
 
     let history_item = HistoryItem {
         id: result.id.clone(),
@@ -114,11 +104,6 @@ fn stop_screen_recording() -> Result<RecordingResult, String> {
     };
 
     let _ = add_history_item(history_item);
-
-    if cfg.after_capture.copy_to_clipboard && result.format == "gif" {
-        let p = std::path::Path::new(&result.file_path);
-        let _ = copy_image_to_clipboard(p);
-    }
 
     Ok(result)
 }
@@ -144,10 +129,10 @@ fn delete_uploader(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn import_sxcu_file(file_path: String) -> Result<CustomUploaderConfig, String> {
-    let config = parse_sxcu_file(&file_path)?;
-    save_custom_uploader(&config)?;
-    Ok(config)
+fn import_sxcu_file(content: String) -> Result<CustomUploaderConfig, String> {
+    let uploader = parse_sxcu_file(&content)?;
+    save_custom_uploader(&uploader)?;
+    Ok(uploader)
 }
 
 #[tauri::command]
@@ -156,7 +141,7 @@ async fn upload_file(uploader_id: String, file_path: String) -> Result<UploadRes
     let uploader = uploaders
         .into_iter()
         .find(|u| u.id == uploader_id)
-        .ok_or_else(|| format!("Uploader with ID '{}' not found", uploader_id))?;
+        .ok_or_else(|| "Uploader configuration not found".to_string())?;
 
     let result = execute_upload(&uploader, &file_path).await?;
     let cfg = load_config();
@@ -169,11 +154,11 @@ async fn upload_file(uploader_id: String, file_path: String) -> Result<UploadRes
             if cfg.after_upload.open_url_in_browser {
                 let _ = open_url_browser(url);
             }
-        }
 
-        let items = load_history();
-        if let Some(matching) = items.iter().find(|i| i.file_path == file_path) {
-            let _ = update_history_item(&matching.id, result.url.clone(), result.deletion_url.clone());
+            let history = load_history();
+            if let Some(item) = history.iter().find(|i| i.file_path == file_path) {
+                let _ = update_history_item(&item.id, Some(url.clone()), result.deletion_url.clone());
+            }
         }
     }
 
@@ -201,27 +186,14 @@ fn clear_all_history() -> Result<(), String> {
 }
 
 #[tauri::command]
-fn save_edited_image(
-    data_url: String,
-    original_path: Option<String>,
-    format: Option<String>,
-) -> Result<String, String> {
+fn save_edited_image(data_url: String, original_path: Option<String>, format: String) -> Result<String, String> {
     let cfg = load_config();
-    let fmt = format.unwrap_or(cfg.default_image_format);
-    let path = save_annotated_image(&data_url, &cfg.save_directory, original_path, &fmt)?;
-
-    if cfg.after_capture.copy_to_clipboard {
-        let p = std::path::Path::new(&path);
-        let _ = copy_image_to_clipboard(p);
-    }
-
-    Ok(path)
+    save_annotated_image(&data_url, &cfg.save_directory, original_path, &format)
 }
 
 #[tauri::command]
 fn copy_image(path: String) -> Result<(), String> {
-    let p = std::path::Path::new(&path);
-    copy_image_to_clipboard(p)
+    copy_image_to_clipboard(std::path::Path::new(&path))
 }
 
 #[tauri::command]
