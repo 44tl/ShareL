@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { CaptureCenter } from './components/CaptureCenter';
@@ -24,6 +24,7 @@ export const App: React.FC = () => {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [uploaders, setUploaders] = useState<CustomUploaderConfig[]>([]);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const historyRef = useRef<HistoryItem[]>([]);
   const [lastCapture, setLastCapture] = useState<CaptureResult | null>(null);
   const [lastRecording, setLastRecording] = useState<RecordingResult | null>(null);
   const [editorImageSrc, setEditorImageSrc] = useState<string | null>(null);
@@ -41,6 +42,18 @@ export const App: React.FC = () => {
     }, 4000);
   };
 
+  const refreshHistory = useCallback(async () => {
+    try {
+      const history = await invokeCommand<HistoryItem[]>('get_history');
+      if (JSON.stringify(historyRef.current) !== JSON.stringify(history)) {
+        historyRef.current = history;
+        setHistoryItems(history);
+      }
+    } catch {
+      // ignore transient refresh failures
+    }
+  }, []);
+
   const loadInitialData = useCallback(async () => {
     try {
       const cfg = await invokeCommand<AppConfig>('get_app_config');
@@ -49,16 +62,59 @@ export const App: React.FC = () => {
       const uploaderList = await invokeCommand<CustomUploaderConfig[]>('list_uploaders');
       setUploaders(uploaderList);
 
-      const history = await invokeCommand<HistoryItem[]>('get_history');
-      setHistoryItems(history);
+      await refreshHistory();
     } catch (err) {
       showToast(String(err), 'error');
     }
-  }, []);
+  }, [refreshHistory]);
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let mounted = true;
+    import('@tauri-apps/api/event')
+      .then(({ listen }) =>
+        listen('history://changed', () => {
+          if (mounted) refreshHistory();
+        })
+      )
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+      if (unlisten) unlisten();
+    };
+  }, [refreshHistory]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshHistory();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [refreshHistory]);
+
+  useEffect(() => {
+    let mounted = true;
+    let unlisten: (() => void) | undefined;
+    import('@tauri-apps/api/window')
+      .then(async ({ getCurrentWindow }) => {
+        const fn = await getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+          if (focused && mounted) refreshHistory();
+        });
+        if (!mounted) fn();
+        else unlisten = fn;
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+      if (unlisten) unlisten();
+    };
+  }, [refreshHistory]);
 
   useEffect(() => {
     let interval: any;
@@ -91,8 +147,7 @@ export const App: React.FC = () => {
       setLastCapture(result);
       showToast(`Screenshot saved: ${result.file_name}`, 'success');
 
-      const updatedHistory = await invokeCommand<HistoryItem[]>('get_history');
-      setHistoryItems(updatedHistory);
+      await refreshHistory();
 
       if (config?.after_capture.open_in_editor) {
         setEditorImageSrc(result.data_url);
@@ -136,8 +191,7 @@ export const App: React.FC = () => {
       });
       showToast(`Recording saved: ${result.file_name} (${result.duration_seconds}s)`, 'success');
 
-      const updatedHistory = await invokeCommand<HistoryItem[]>('get_history');
-      setHistoryItems(updatedHistory);
+      await refreshHistory();
     } catch (err) {
       showToast(`Failed to stop recording: ${err}`, 'error');
       setRecordingStatus({
@@ -162,8 +216,7 @@ export const App: React.FC = () => {
 
       if (res.success && res.url) {
         showToast(`Upload completed: ${res.url}`, 'success');
-        const updatedHistory = await invokeCommand<HistoryItem[]>('get_history');
-        setHistoryItems(updatedHistory);
+        await refreshHistory();
       } else {
         showToast(`Upload failed: ${res.error_message || 'Unknown server error'}`, 'error');
       }
@@ -180,8 +233,7 @@ export const App: React.FC = () => {
         format: config?.default_image_format || 'png',
       });
       showToast(`Saved annotated image: ${outPath}`, 'success');
-      const updatedHistory = await invokeCommand<HistoryItem[]>('get_history');
-      setHistoryItems(updatedHistory);
+      await refreshHistory();
     } catch (err) {
       showToast(`Save failed: ${err}`, 'error');
     }
@@ -326,8 +378,7 @@ export const App: React.FC = () => {
   const handleToggleFavoriteHistory = async (id: string) => {
     try {
       await invokeCommand('toggle_favorite_history', { id });
-      const updated = await invokeCommand<HistoryItem[]>('get_history');
-      setHistoryItems(updated);
+      await refreshHistory();
     } catch (err) {
       showToast(String(err), 'error');
     }
@@ -336,8 +387,7 @@ export const App: React.FC = () => {
   const handleDeleteHistoryItem = async (id: string, deleteFile: boolean) => {
     try {
       await invokeCommand('delete_history', { id, deleteFile });
-      const updated = await invokeCommand<HistoryItem[]>('get_history');
-      setHistoryItems(updated);
+      await refreshHistory();
       showToast('Item removed from history', 'info');
     } catch (err) {
       showToast(String(err), 'error');
@@ -347,7 +397,7 @@ export const App: React.FC = () => {
   const handleClearHistory = async () => {
     try {
       await invokeCommand('clear_all_history');
-      setHistoryItems([]);
+      await refreshHistory();
       showToast('Capture history cleared', 'info');
     } catch (err) {
       showToast(String(err), 'error');

@@ -15,7 +15,11 @@ use recorder::{get_recording_status, start_recording, stop_recording, RecordingR
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+
+fn notify_history_changed(app: &tauri::AppHandle) {
+    let _ = app.emit("history://changed", ());
+}
 use tools::{extract_text_ocr, open_url_browser, read_file_as_data_url, save_annotated_image, show_in_folder, OcrResult};
 use uploader::{
     delete_custom_uploader, execute_upload, list_custom_uploaders, parse_sxcu_file,
@@ -33,7 +37,7 @@ fn update_app_config(config: AppConfig) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn capture_screen(mode: String, delay_ms: u64) -> Result<CaptureResult, String> {
+async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> Result<CaptureResult, String> {
     let cfg = load_config();
     let capture_mode = match mode.to_lowercase().as_str() {
         "region" => CaptureMode::Region,
@@ -76,6 +80,8 @@ async fn capture_screen(mode: String, delay_ms: u64) -> Result<CaptureResult, St
 
     let _ = add_history_item(history_item);
 
+    notify_history_changed(&app);
+
     Ok(result)
 }
 
@@ -86,7 +92,7 @@ fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Resu
 }
 
 #[tauri::command]
-fn stop_screen_recording() -> Result<RecordingResult, String> {
+fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, String> {
     let result = stop_recording()?;
 
     let history_item = HistoryItem {
@@ -108,6 +114,8 @@ fn stop_screen_recording() -> Result<RecordingResult, String> {
     };
 
     let _ = add_history_item(history_item);
+
+    notify_history_changed(&app);
 
     Ok(result)
 }
@@ -140,7 +148,7 @@ fn import_sxcu_file(content: String) -> Result<CustomUploaderConfig, String> {
 }
 
 #[tauri::command]
-async fn upload_file(uploader_id: String, file_path: String) -> Result<UploadResult, String> {
+async fn upload_file(app: tauri::AppHandle, uploader_id: String, file_path: String) -> Result<UploadResult, String> {
     let uploaders = list_custom_uploaders();
     let uploader = uploaders
         .into_iter()
@@ -162,6 +170,7 @@ async fn upload_file(uploader_id: String, file_path: String) -> Result<UploadRes
             let history = load_history();
             if let Some(item) = history.iter().find(|i| i.file_path == file_path) {
                 let _ = update_history_item(&item.id, Some(url.clone()), result.deletion_url.clone());
+                notify_history_changed(&app);
             }
         }
     }
@@ -175,18 +184,30 @@ fn get_history() -> Vec<HistoryItem> {
 }
 
 #[tauri::command]
-fn toggle_favorite_history(id: String) -> Result<bool, String> {
-    toggle_favorite_history_item(&id)
+fn toggle_favorite_history(app: tauri::AppHandle, id: String) -> Result<bool, String> {
+    let res = toggle_favorite_history_item(&id);
+    if res.is_ok() {
+        notify_history_changed(&app);
+    }
+    res
 }
 
 #[tauri::command]
-fn delete_history(id: String, delete_file: bool) -> Result<(), String> {
-    delete_history_item(&id, delete_file)
+fn delete_history(app: tauri::AppHandle, id: String, delete_file: bool) -> Result<(), String> {
+    let res = delete_history_item(&id, delete_file);
+    if res.is_ok() {
+        notify_history_changed(&app);
+    }
+    res
 }
 
 #[tauri::command]
-fn clear_all_history() -> Result<(), String> {
-    clear_history()
+fn clear_all_history(app: tauri::AppHandle) -> Result<(), String> {
+    let res = clear_history();
+    if res.is_ok() {
+        notify_history_changed(&app);
+    }
+    res
 }
 
 #[tauri::command]
