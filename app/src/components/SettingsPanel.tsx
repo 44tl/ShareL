@@ -74,7 +74,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </p>
       </div>
 
-      {/* Wayland Compositor & Backend Architecture Card */}
       <div
         style={{
           backgroundColor: 'var(--md-sys-color-surface-container)',

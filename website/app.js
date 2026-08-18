@@ -8,13 +8,117 @@ const annotations = [];
 const canvas = document.getElementById('interactiveCanvas');
 const ctx = canvas.getContext('2d');
 
+const defaultColor = '#8ab4f8';
+const defaultStrokeWidth = 4;
+
+function drawArrow(targetCtx, fromX, fromY, toX, toY, color, strokeWidth) {
+  const headlen = Math.max(16, strokeWidth * 3.5);
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const angle = Math.atan2(dy, dx);
+
+  targetCtx.save();
+  targetCtx.strokeStyle = color;
+  targetCtx.fillStyle = color;
+  targetCtx.lineWidth = strokeWidth;
+  targetCtx.lineCap = 'round';
+  targetCtx.lineJoin = 'round';
+
+  targetCtx.beginPath();
+  targetCtx.moveTo(fromX, fromY);
+  targetCtx.lineTo(toX, toY);
+  targetCtx.stroke();
+
+  targetCtx.beginPath();
+  targetCtx.moveTo(toX, toY);
+  targetCtx.lineTo(
+    toX - headlen * Math.cos(angle - Math.PI / 6),
+    toY - headlen * Math.sin(angle - Math.PI / 6)
+  );
+  targetCtx.lineTo(
+    toX - headlen * Math.cos(angle + Math.PI / 6),
+    toY - headlen * Math.sin(angle + Math.PI / 6)
+  );
+  targetCtx.closePath();
+  targetCtx.fill();
+  targetCtx.restore();
+}
+
+function drawStep(targetCtx, x, y, num, color, strokeWidth) {
+  const radius = Math.max(16, strokeWidth * 4);
+  targetCtx.save();
+  targetCtx.fillStyle = color;
+  targetCtx.beginPath();
+  targetCtx.arc(x, y, radius, 0, Math.PI * 2);
+  targetCtx.fill();
+
+  targetCtx.fillStyle = '#111318';
+  targetCtx.font = `bold ${radius * 1.1}px sans-serif`;
+  targetCtx.textAlign = 'center';
+  targetCtx.textBaseline = 'middle';
+  targetCtx.fillText(String(num), x, y);
+  targetCtx.restore();
+}
+
+function drawBlur(targetCtx, x, y, w, h) {
+  const rx = Math.min(x, x + w);
+  const ry = Math.min(y, y + h);
+  const rw = Math.abs(w);
+  const rh = Math.abs(h);
+
+  if (rw > 2 && rh > 2) {
+    const sampleSize = Math.max(8, Math.floor(rw / 16));
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = Math.max(1, Math.floor(rw / sampleSize));
+    tempCanvas.height = Math.max(1, Math.floor(rh / sampleSize));
+    const tCtx = tempCanvas.getContext('2d');
+
+    if (tCtx) {
+      tCtx.drawImage(canvas, rx, ry, rw, rh, 0, 0, tempCanvas.width, tempCanvas.height);
+      targetCtx.imageSmoothingEnabled = false;
+      targetCtx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, rx, ry, rw, rh);
+      targetCtx.imageSmoothingEnabled = true;
+    }
+
+    targetCtx.save();
+    targetCtx.strokeStyle = 'rgba(138, 180, 248, 0.5)';
+    targetCtx.lineWidth = 1;
+    targetCtx.setLineDash([4, 4]);
+    targetCtx.strokeRect(rx, ry, rw, rh);
+    targetCtx.restore();
+  }
+}
+
+function drawRect(targetCtx, x, y, w, h, color, strokeWidth) {
+  targetCtx.save();
+  targetCtx.strokeStyle = color;
+  targetCtx.lineWidth = strokeWidth;
+  targetCtx.lineCap = 'round';
+  targetCtx.lineJoin = 'round';
+  targetCtx.strokeRect(x, y, w, h);
+  targetCtx.restore();
+}
+
+function drawHighlighter(targetCtx, fromX, fromY, toX, toY, strokeWidth) {
+  targetCtx.save();
+  targetCtx.globalAlpha = 0.35;
+  targetCtx.lineWidth = strokeWidth * 4;
+  targetCtx.strokeStyle = '#fdd663';
+  targetCtx.lineCap = 'round';
+  targetCtx.beginPath();
+  targetCtx.moveTo(fromX, fromY);
+  targetCtx.lineTo(toX, toY);
+  targetCtx.stroke();
+  targetCtx.restore();
+}
+
 function initDemoBackground() {
-  ctx.fillStyle = '#111318';
+  ctx.fillStyle = '#0d0f14';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = '#1e2025';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
   ctx.lineWidth = 1;
-  const gridSize = 32;
+  const gridSize = 24;
   for (let x = 0; x < canvas.width; x += gridSize) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
@@ -28,33 +132,58 @@ function initDemoBackground() {
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#191c20';
-  ctx.fillRect(180, 70, 600, 250);
+  const cardW = 540;
+  const cardH = 220;
+  const cardX = (canvas.width - cardW) / 2;
+  const cardY = (canvas.height - cardH) / 2;
 
-  ctx.fillStyle = '#282a30';
-  ctx.fillRect(180, 70, 600, 36);
+  ctx.fillStyle = '#141720';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(cardX, cardY, cardW, cardH, 8);
+  ctx.fill();
+  ctx.stroke();
 
-  ctx.fillStyle = '#e2e2e9';
-  ctx.font = '600 13px Google Sans, Inter, sans-serif';
-  ctx.fillText('ShareL Demonstration - System Terminal', 200, 93);
+  ctx.fillStyle = '#1c202c';
+  ctx.beginPath();
+  ctx.roundRect(cardX, cardY, cardW, 32, [8, 8, 0, 0]);
+  ctx.fill();
 
-  ctx.fillStyle = '#a8c7fa';
-  ctx.font = '500 13px "Roboto Mono", monospace';
-  ctx.fillText('$ sharel --capture region --upload', 200, 140);
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(cardX + 14, cardY + 16, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f59e0b';
+  ctx.beginPath();
+  ctx.arc(cardX + 26, cardY + 16, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#10b981';
+  ctx.beginPath();
+  ctx.arc(cardX + 38, cardY + 16, 4, 0, Math.PI * 2);
+  ctx.fill();
 
-  ctx.fillStyle = '#6dd58c';
-  ctx.fillText('Capturing Wayland region via XDG portal...', 200, 170);
-  ctx.fillText('Optimal GIF generated with palettegen: 1.2 MB', 200, 200);
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '500 11px Inter, sans-serif';
+  ctx.fillText('sharel-capture-preview.png — 1920x1080', cardX + 54, cardY + 20);
 
-  ctx.fillStyle = '#fdd663';
-  ctx.fillText('Direct URL: https://i.freeimage.host/sharel-demo.gif', 200, 230);
+  ctx.fillStyle = '#818cf8';
+  ctx.font = '500 12px "JetBrains Mono", monospace';
+  ctx.fillText('$ sharel capture region --upload', cardX + 24, cardY + 68);
+
+  ctx.fillStyle = '#10b981';
+  ctx.fillText('✓ Screen captured via Wayland (Niri / grim)', cardX + 24, cardY + 98);
+  ctx.fillText('✓ Uploaded to custom S3 host in 140ms', cardX + 24, cardY + 124);
+
+  ctx.fillStyle = '#f3f4f6';
+  ctx.fillText('URL: https://i.example.com/sharel_2026.png (Copied)', cardX + 24, cardY + 154);
 
   drawAllAnnotations();
 }
 
 function setTool(tool) {
   currentTool = tool;
-  document.querySelectorAll('.tool-btn').forEach((btn) => {
+  document.querySelectorAll('.tool-chip').forEach((btn) => {
     btn.classList.remove('active');
     if (btn.getAttribute('data-tool') === tool) {
       btn.classList.add('active');
@@ -70,73 +199,17 @@ function clearCanvas() {
 
 function drawAllAnnotations() {
   for (const ann of annotations) {
-    ctx.save();
-    ctx.strokeStyle = ann.color || '#a8c7fa';
-    ctx.fillStyle = ann.color || '#a8c7fa';
-    ctx.lineWidth = ann.width || 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
     if (ann.type === 'arrow') {
-      const dx = ann.toX - ann.fromX;
-      const dy = ann.toY - ann.fromY;
-      const angle = Math.atan2(dy, dx);
-      const headlen = 14;
-
-      ctx.beginPath();
-      ctx.moveTo(ann.fromX, ann.fromY);
-      ctx.lineTo(ann.toX, ann.toY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(ann.toX, ann.toY);
-      ctx.lineTo(
-        ann.toX - headlen * Math.cos(angle - Math.PI / 6),
-        ann.toY - headlen * Math.sin(angle - Math.PI / 6)
-      );
-      ctx.lineTo(
-        ann.toX - headlen * Math.cos(angle + Math.PI / 6),
-        ann.toY - headlen * Math.sin(angle + Math.PI / 6)
-      );
-      ctx.closePath();
-      ctx.fill();
+      drawArrow(ctx, ann.fromX, ann.fromY, ann.toX, ann.toY, ann.color, ann.width);
     } else if (ann.type === 'rect') {
-      ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
+      drawRect(ctx, ann.x, ann.y, ann.w, ann.h, ann.color, ann.width);
     } else if (ann.type === 'step') {
-      ctx.beginPath();
-      ctx.arc(ann.x, ann.y, 14, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#042f66';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(ann.num), ann.x, ann.y);
+      drawStep(ctx, ann.x, ann.y, ann.num, ann.color, ann.width);
     } else if (ann.type === 'blur') {
-      const sampleSize = 10;
-      const tCanvas = document.createElement('canvas');
-      tCanvas.width = Math.max(1, Math.floor(Math.abs(ann.w) / sampleSize));
-      tCanvas.height = Math.max(1, Math.floor(Math.abs(ann.h) / sampleSize));
-      const tCtx = tCanvas.getContext('2d');
-      if (tCtx) {
-        tCtx.drawImage(canvas, ann.x, ann.y, ann.w, ann.h, 0, 0, tCanvas.width, tCanvas.height);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(tCanvas, 0, 0, tCanvas.width, tCanvas.height, ann.x, ann.y, ann.w, ann.h);
-        ctx.imageSmoothingEnabled = true;
-      }
-      ctx.strokeStyle = 'rgba(168, 199, 250, 0.4)';
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
+      drawBlur(ctx, ann.x, ann.y, ann.w, ann.h);
     } else if (ann.type === 'highlighter') {
-      ctx.globalAlpha = 0.35;
-      ctx.lineWidth = 14;
-      ctx.beginPath();
-      ctx.moveTo(ann.fromX, ann.fromY);
-      ctx.lineTo(ann.toX, ann.toY);
-      ctx.stroke();
+      drawHighlighter(ctx, ann.fromX, ann.fromY, ann.toX, ann.toY, ann.width);
     }
-
-    ctx.restore();
   }
 }
 
@@ -152,7 +225,8 @@ canvas.addEventListener('mousedown', (e) => {
       x: startX,
       y: startY,
       num: stepCounter++,
-      color: '#a8c7fa',
+      color: defaultColor,
+      width: defaultStrokeWidth,
     });
     isDrawing = false;
     initDemoBackground();
@@ -167,30 +241,15 @@ canvas.addEventListener('mousemove', (e) => {
 
   initDemoBackground();
 
-  ctx.save();
-  ctx.strokeStyle = '#a8c7fa';
-  ctx.lineWidth = 3;
-
   if (currentTool === 'arrow') {
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
+    drawArrow(ctx, startX, startY, currentX, currentY, defaultColor, defaultStrokeWidth);
   } else if (currentTool === 'rect') {
-    ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+    drawRect(ctx, startX, startY, currentX - startX, currentY - startY, defaultColor, defaultStrokeWidth);
   } else if (currentTool === 'blur') {
-    ctx.setLineDash([4, 4]);
-    ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+    drawBlur(ctx, startX, startY, currentX - startX, currentY - startY);
   } else if (currentTool === 'highlighter') {
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 14;
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
+    drawHighlighter(ctx, startX, startY, currentX, currentY, defaultStrokeWidth);
   }
-
-  ctx.restore();
 });
 
 canvas.addEventListener('mouseup', (e) => {
@@ -207,8 +266,8 @@ canvas.addEventListener('mouseup', (e) => {
       fromY: startY,
       toX: endX,
       toY: endY,
-      color: '#a8c7fa',
-      width: 3,
+      color: defaultColor,
+      width: defaultStrokeWidth,
     });
   } else if (currentTool === 'rect') {
     annotations.push({
@@ -217,16 +276,16 @@ canvas.addEventListener('mouseup', (e) => {
       y: Math.min(startY, endY),
       w: Math.abs(endX - startX),
       h: Math.abs(endY - startY),
-      color: '#a8c7fa',
-      width: 3,
+      color: defaultColor,
+      width: defaultStrokeWidth,
     });
   } else if (currentTool === 'blur') {
     annotations.push({
       type: 'blur',
-      x: Math.min(startX, endX),
-      y: Math.min(startY, endY),
-      w: Math.abs(endX - startX),
-      h: Math.abs(endY - startY),
+      x: startX,
+      y: startY,
+      w: endX - startX,
+      h: endY - startY,
     });
   } else if (currentTool === 'highlighter') {
     annotations.push({
@@ -235,7 +294,8 @@ canvas.addEventListener('mouseup', (e) => {
       fromY: startY,
       toX: endX,
       toY: endY,
-      color: '#fdd663',
+      color: defaultColor,
+      width: defaultStrokeWidth,
     });
   }
 
@@ -245,22 +305,12 @@ canvas.addEventListener('mouseup', (e) => {
 function copyInstallCmd() {
   const text = 'curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash';
   navigator.clipboard.writeText(text).then(() => {
-    const btn = document.getElementById('copyHeroBtn');
-    if (btn) {
-      btn.innerText = 'Copied!';
-      setTimeout(() => (btn.innerText = 'Copy'), 2000);
+    const copyText = document.getElementById('copyText');
+    if (copyText) {
+      copyText.innerText = 'Copied!';
+      setTimeout(() => (copyText.innerText = 'Copy'), 2000);
     }
   });
-}
-
-function testSxcuDemo() {
-  const out = document.getElementById('sxcuOutput');
-  const url = document.getElementById('sxcuUrl').value;
-  const method = document.getElementById('sxcuMethod').value;
-  const pattern = document.getElementById('sxcuPattern').value;
-
-  out.style.display = 'block';
-  out.innerHTML = `Sending ${method} request to ${url}...\nHTTP 200 OK (240ms)\nResponse: {"status_code":200,"image":{"url":"https://i.freeimage.host/81a9f02.png"}}\nExtracted URL (${pattern}): https://i.freeimage.host/81a9f02.png\nCopied to clipboard!`;
 }
 
 initDemoBackground();

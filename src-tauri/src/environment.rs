@@ -48,7 +48,6 @@ fn command_exists(cmd: &str) -> bool {
 }
 
 pub fn detect_compositor() -> (CompositorKind, String) {
-    // 1. Check for Niri explicitly (socket or desktop name)
     if env::var_os("NIRI_SOCKET").is_some() {
         return (CompositorKind::Niri, "Niri (Scrollable Tiling)".to_string());
     }
@@ -61,7 +60,6 @@ pub fn detect_compositor() -> (CompositorKind, String) {
         return (CompositorKind::Niri, "Niri (Scrollable Tiling)".to_string());
     }
 
-    // 2. Check for Hyprland
     if env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some()
         || env::var_os("HYPRLAND_CMD").is_some()
         || desktop.contains("hyprland")
@@ -70,17 +68,14 @@ pub fn detect_compositor() -> (CompositorKind, String) {
         return (CompositorKind::Hyprland, "Hyprland (Dynamic Tiling)".to_string());
     }
 
-    // 3. Check for Sway
     if env::var_os("SWAYSOCK").is_some() || desktop.contains("sway") || session.contains("sway") {
         return (CompositorKind::Sway, "Sway (i3-compatible Wayland)".to_string());
     }
 
-    // 4. Check for COSMIC
     if desktop.contains("cosmic") || session.contains("cosmic") || env::var_os("COSMIC_DATA_CONTROL").is_some() {
         return (CompositorKind::Cosmic, "COSMIC (Pop!_OS / Rust)".to_string());
     }
 
-    // 5. Check for KDE Plasma
     if env::var("KDE_FULL_SESSION").map(|v| v == "true").unwrap_or(false)
         || desktop.contains("kde")
         || desktop.contains("plasma")
@@ -89,7 +84,6 @@ pub fn detect_compositor() -> (CompositorKind, String) {
         return (CompositorKind::KdePlasma, "KDE Plasma (KWin)".to_string());
     }
 
-    // 6. Check for GNOME
     if desktop.contains("gnome")
         || session.contains("gnome")
         || gdm_session.contains("gnome")
@@ -98,14 +92,12 @@ pub fn detect_compositor() -> (CompositorKind, String) {
         return (CompositorKind::Gnome, "GNOME (Mutter)".to_string());
     }
 
-    // 7. Generic Wayland fallback
     if env::var_os("WAYLAND_DISPLAY").is_some()
         || env::var("XDG_SESSION_TYPE").map(|v| v.to_lowercase() == "wayland").unwrap_or(false)
     {
         return (CompositorKind::GenericWayland, "Generic Wayland Compositor".to_string());
     }
 
-    // 8. X11
     if env::var_os("DISPLAY").is_some()
         || env::var("XDG_SESSION_TYPE").map(|v| v.to_lowercase() == "x11").unwrap_or(false)
     {

@@ -4,388 +4,248 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShareL - High Performance Screen Capture &amp; ShareX Companion for Linux</title>
+  <title>ShareL — Fast Screen Capture, Annotation &amp; Sharing for Linux</title>
   <meta name="description"
-    content="ShareL brings complete ShareX custom destination and workflow support to modern Linux Wayland desktops with sub-millisecond captures and native stream recording.">
+    content="Linux-native screen capture and recording utility with full ShareX (.sxcu) support, instant annotations, and first-class Wayland compositor detection.">
   <link rel="icon" type="image/svg+xml" href="sharel-logo.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
   <header>
-    <div class="container">
-      <nav>
-        <a href="#" class="logo-group">
-          <img src="sharel-logo.svg" alt="ShareL Logo">
-          <span class="brand-name">ShareL</span>
-        </a>
+    <div class="container nav-container">
+      <a href="#" class="logo-group">
+        <img src="sharel-logo.svg" alt="ShareL Logo" width="28" height="28">
+        <span class="brand-name">ShareL</span>
+      </a>
 
-        <ul class="nav-links">
-          <li><a href="#performance">Performance</a></li>
-          <li><a href="#features">Features</a></li>
-          <li><a href="#sharex-engine">ShareX Engine</a></li>
-          <li><a href="#interactive">Live Canvas</a></li>
-          <li><a href="#comparison">Comparison</a></li>
-          <li><a href="#install">Install</a></li>
-        </ul>
-
-        <a href="#install" class="btn btn-primary">Get ShareL</a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#compositors">Wayland Support</a>
+        <a href="#cli">CLI &amp; Keybindings</a>
+        <a href="#install">Install</a>
       </nav>
+
+      <div class="nav-actions">
+        <a href="https://github.com/44tl/ShareL" class="btn btn-secondary" target="_blank" rel="noreferrer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <a href="#install" class="btn btn-primary">Install</a>
+      </div>
     </div>
   </header>
 
   <main>
     <section class="hero">
-      <div class="container hero-content">
-        <div class="tag">Native Wayland Capture Engine</div>
-        <h1>The High Speed ShareX Suite <span>Built for Linux</span></h1>
-        <p class="hero-desc">
-          Engineered in Rust for zero latency. Direct XDG Desktop Portal integration, ShareX custom destination
-          compatibility, custom domain routing, and native in-process recording.
+      <div class="container hero-container">
+        <h1>Screen capture on Linux,<br><span>done right.</span></h1>
+
+        <p class="hero-subtitle">
+          Lightning-fast screen capture, automated workflows, rich annotation editor, and full ShareX custom uploader support across all modern Wayland compositors.
         </p>
 
-        <div class="hero-actions">
-          <a href="#install" class="btn btn-primary">Download for Linux</a>
-          <a href="https://github.com/44tl/ShareL" class="btn btn-secondary" target="_blank" rel="noreferrer">GitHub
-            Repository</a>
+        <div class="install-bar">
+          <span class="prompt">$</span>
+          <span class="cmd" id="installCmd">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash</span>
+          <button class="copy-btn" id="copyBtn" onclick="copyInstallCmd()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
+            <span id="copyText">Copy</span>
+          </button>
         </div>
 
-        <div class="command-box">
-          <span class="mono">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash</span>
-          <button class="copy-btn" id="copyHeroBtn" onclick="copyInstallCmd()">Copy</button>
-        </div>
-
-        <div class="interactive-showcase" id="interactive">
-          <div class="showcase-header">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 700; font-size: 15px;">Interactive Annotation Canvas</span>
-              <span style="font-size: 12px; color: var(--text-muted);">Test drawing tools live in your browser</span>
+        <div class="interactive-preview">
+          <div class="preview-header">
+            <div class="window-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+              <span class="window-title">Interactive Annotation Canvas</span>
             </div>
 
-            <div class="tool-bar">
-              <button class="tool-btn active" data-tool="arrow" onclick="setTool('arrow')">Arrow</button>
-              <button class="tool-btn" data-tool="step" onclick="setTool('step')">Step Badge</button>
-              <button class="tool-btn" data-tool="blur" onclick="setTool('blur')">Pixelate Blur</button>
-              <button class="tool-btn" data-tool="rect" onclick="setTool('rect')">Rectangle</button>
-              <button class="tool-btn" data-tool="highlighter" onclick="setTool('highlighter')">Highlighter</button>
-              <button class="tool-btn" onclick="clearCanvas()">Clear</button>
+            <div class="canvas-tools">
+              <button class="tool-chip active" data-tool="arrow" onclick="setTool('arrow')">Arrow</button>
+              <button class="tool-chip" data-tool="step" onclick="setTool('step')">Step</button>
+              <button class="tool-chip" data-tool="rect" onclick="setTool('rect')">Rectangle</button>
+              <button class="tool-chip" data-tool="blur" onclick="setTool('blur')">Pixelate</button>
+              <button class="tool-chip" data-tool="highlighter" onclick="setTool('highlighter')">Highlight</button>
+              <button class="tool-chip clear" onclick="clearCanvas()">Clear</button>
             </div>
           </div>
 
-          <div class="canvas-container">
-            <canvas id="interactiveCanvas" width="960" height="400"></canvas>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="performance" style="padding: 70px 0; background: var(--bg-surface);">
-      <div class="container">
-        <div class="section-title">
-          <h2>Benchmarked for Pure Speed</h2>
-          <p>Native Rust core with async IO pipelines ensures instantaneous captures with zero system overhead.</p>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-          <div
-            style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
-            <div
-              style="font-size: 32px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono'; margin-bottom: 6px;">
-              &lt; 50ms</div>
-            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Capture Latency
-            </div>
-            <div style="font-size: 12px; color: var(--text-muted);">Direct memory buffer dispatch via native Wayland
-              portal protocols.</div>
-          </div>
-
-          <div
-            style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
-            <div
-              style="font-size: 32px; font-weight: 700; color: var(--success); font-family: 'Roboto Mono'; margin-bottom: 6px;">
-              60% Smaller</div>
-            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Optimized GIF
-              File Size</div>
-            <div style="font-size: 12px; color: var(--text-muted);">Two-pass palettegen Bayer dithering algorithm
-              produces crisp web embeds.</div>
-          </div>
-
-          <div
-            style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
-            <div
-              style="font-size: 32px; font-weight: 700; color: var(--warning); font-family: 'Roboto Mono'; margin-bottom: 6px;">
-              100%</div>
-            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">ShareX .sxcu
-              Support</div>
-            <div style="font-size: 12px; color: var(--text-muted);">Zero configuration migration for existing image
-              hosts and S3 backends.</div>
-          </div>
-
-          <div
-            style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; text-align: center;">
-            <div
-              style="font-size: 32px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono'; margin-bottom: 6px;">
-              0 CPU Drain</div>
-            <div style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Idle Resource
-              Usage</div>
-            <div style="font-size: 12px; color: var(--text-muted);">Compiled machine code with lightweight memory
-              footprint.</div>
+          <div class="canvas-wrap">
+            <canvas id="interactiveCanvas" width="900" height="360"></canvas>
+            <div class="canvas-hint">Click and drag inside the frame to test drawing annotations live</div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="features" style="padding: 70px 0;">
+    <section id="compositors" class="compositors-bar">
       <div class="container">
-        <div class="section-title">
-          <h2>Precision Workflow Automation</h2>
-          <p>Everything power users require to capture, annotate, obfuscate, and upload in one stroke.</p>
+        <div class="compositors-header">
+          <span>First-class Compositor &amp; Backend Support</span>
         </div>
-
-        <div class="features-grid">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            </div>
-            <h3>Universal Wayland Architecture</h3>
-            <p>Seamlessly handles Niri, Hyprland, Sway, GNOME (Mutter), KDE Plasma (KWin), and COSMIC with native portal and screencopy backends.</p>
+        <div class="compositors-tags">
+          <div class="comp-badge">
+            <strong>Niri</strong>
+            <span>Scrollable Tiling</span>
           </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
-              </svg>
-            </div>
-            <h3>Custom Domain Mapping</h3>
-            <p>Route uploaded media to your vanity domains or CDN endpoints with dynamic template prefixing and JSON
-              path parsing.</p>
+          <div class="comp-badge">
+            <strong>Hyprland</strong>
+            <span>Dynamic Tiling</span>
           </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <h3>Two-Pass Palettegen GIF Engine</h3>
-            <p>Captures regional screen activity and compiles crisp animated GIFs with automated color quantization and
-              zero artifacting.</p>
+          <div class="comp-badge">
+            <strong>Sway</strong>
+            <span>i3 Wayland</span>
           </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            </div>
-            <h3>Pixelation &amp; Sequence Steps</h3>
-            <p>Blur confidential tokens, credentials, and passwords. Generate auto-incrementing numbered markers for
-              documentation.</p>
+          <div class="comp-badge">
+            <strong>GNOME</strong>
+            <span>Mutter Portal</span>
           </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path
-                  d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              </svg>
-            </div>
-            <h3>Automated Task Pipelines</h3>
-            <p>Execute multi-step flows on capture: auto-copy to clipboard, save to formatted directory paths, upload to
-              destination, and notify.</p>
+          <div class="comp-badge">
+            <strong>KDE Plasma</strong>
+            <span>KWin Portal</span>
           </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="2" y1="12" x2="22" y2="12" />
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-              </svg>
-            </div>
-            <h3>Integrated Toolset (OCR, Color, QR)</h3>
-            <p>Extract selectable text via Tesseract OCR, inspect exact pixel color coordinates (HEX, RGB, HSL), and
-              generate QR codes.</p>
+          <div class="comp-badge">
+            <strong>COSMIC</strong>
+            <span>Pop!_OS / Rust</span>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="sharex-engine" style="padding: 70px 0; background: var(--bg-surface);">
+    <section id="features" class="features-section">
       <div class="container">
-        <div class="section-title">
-          <h2>ShareX Custom Uploader (.sxcu) Engine</h2>
-          <p>Test response templates, custom domains, and headers directly in browser.</p>
+        <div class="section-heading">
+          <h2>Engineered for Power Users</h2>
+          <p>A unified suite designed for speed, flexibility, and automation.</p>
         </div>
 
-        <div
-          style="max-width: 760px; margin: 0 auto; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px;">
-          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px;">
-            <div>
-              <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">Request
-                URL</label>
-              <input type="text" id="sxcuUrl" value="https://freeimage.host/api/1/upload"
-                style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); padding: 9px 12px; border-radius: var(--radius-sm);">
+        <div class="compact-grid">
+          <div class="feature-item">
+            <div class="feature-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 9 6 6m0-6-6 6"/>
+              </svg>
             </div>
             <div>
-              <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">HTTP
-                Method</label>
-              <select id="sxcuMethod"
-                style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-main); padding: 9px 12px; border-radius: var(--radius-sm);">
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-              </select>
+              <h3>ShareX (.sxcu) Uploader Engine</h3>
+              <p>Import and execute existing ShareX destination files directly. Full support for multipart form data, JSON payloads, headers, regexes, and custom vanity domain prefixes.</p>
             </div>
           </div>
 
-          <div style="margin-bottom: 16px;">
-            <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 6px;">URL Pattern
-              Template (With Custom Domain Support)</label>
-            <input type="text" id="sxcuPattern" value="https://cdn.example.com/i/$json:image.url$"
-              style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--primary); padding: 9px 12px; border-radius: var(--radius-sm); font-family: 'Roboto Mono';">
+          <div class="feature-item">
+            <div class="feature-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+            </div>
+            <div>
+              <h3>Multi-Backend Wayland Routing</h3>
+              <p>Intelligently switches between XDG Desktop Portal, direct grim/slurp, gpu-screen-recorder (NVENC/VAAPI), wf-recorder, and native compositor IPC.</p>
+            </div>
           </div>
 
-          <button onclick="testSxcuDemo()" class="btn btn-primary"
-            style="width: 100%; justify-content: center;">Simulate Uploader Test</button>
+          <div class="feature-item">
+            <div class="feature-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/>
+              </svg>
+            </div>
+            <div>
+              <h3>Optimized GIF &amp; MP4 Studio</h3>
+              <p>Capture regional or full-screen videos with 60 FPS recording and two-pass optimal palette generation for crisp, artifact-free GIFs.</p>
+            </div>
+          </div>
 
-          <div id="sxcuOutput"
-            style="margin-top: 16px; display: none; background: var(--bg-surface); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius-sm); font-family: 'Roboto Mono'; font-size: 12px; color: var(--success); white-space: pre-wrap;">
+          <div class="feature-item">
+            <div class="feature-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <div>
+              <h3>Vector Annotations &amp; Obfuscation</h3>
+              <p>Add arrows, numbered sequence markers, freehand brushes, highlighters, text, and pixelation filters to redact passwords and tokens before sharing.</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="comparison" style="padding: 70px 0;">
+    <section id="cli" class="cli-section">
       <div class="container">
-        <div class="section-title">
-          <h2>Technical Feature Matrix</h2>
-          <p>How ShareL compares with existing Linux and Windows capture tools.</p>
+        <div class="section-heading">
+          <h2>Seamless Terminal &amp; Keybinding Integration</h2>
+          <p>Bind commands directly to your window manager shortcuts.</p>
         </div>
 
-        <div class="table-wrapper">
-          <table class="comparison-table">
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>ShareL (Linux)</th>
-                <th>ShareX (Windows)</th>
-                <th>Flameshot</th>
-                <th>Spectacle</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Linux Wayland Native</td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="cross">No</span></td>
-                <td><span class="check">Partial</span></td>
-                <td><span class="check">Yes</span></td>
-              </tr>
-              <tr>
-                <td>ShareX .sxcu Custom Uploaders</td>
-                <td><span class="check">100% Compatible</span></td>
-                <td><span class="check">Native</span></td>
-                <td><span class="cross">No</span></td>
-                <td><span class="cross">No</span></td>
-              </tr>
-              <tr>
-                <td>Custom Domain Prepending</td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="cross">No</span></td>
-                <td><span class="cross">No</span></td>
-              </tr>
-              <tr>
-                <td>CLI &amp; Keybinding Integration</td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-              </tr>
-              <tr>
-                <td>Two-Pass Palettegen GIF Recording</td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="cross">No</span></td>
-                <td><span class="cross">No</span></td>
-              </tr>
-              <tr>
-                <td>Auto-Incrementing Step Markers</td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="cross">No</span></td>
-                <td><span class="cross">No</span></td>
-              </tr>
-              <tr>
-                <td>Pixelate Obfuscation Filter</td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="cross">No</span></td>
-              </tr>
-              <tr>
-                <td>OCR Text Extraction</td>
-                <td><span class="check">Yes (Tesseract)</span></td>
-                <td><span class="check">Yes</span></td>
-                <td><span class="cross">No</span></td>
-                <td><span class="check">Yes (KDE)</span></td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="cli-grid">
+          <div class="code-card">
+            <div class="code-card-header">Niri Configuration (<code>~/.config/niri/config.kdl</code>)</div>
+            <pre><code>binds {
+    Print     { spawn "sharel" "capture" "region"; }
+    Mod+Print { spawn "sharel" "capture" "region" "--upload"; }
+    Alt+Print { spawn "sharel" "capture" "window"; }
+}</code></pre>
+          </div>
+
+          <div class="code-card">
+            <div class="code-card-header">Hyprland &amp; Sway Shortcuts</div>
+            <pre><code># Hyprland (hyprland.conf)
+bind = , Print, exec, sharel capture region
+bind = SUPER, Print, exec, sharel capture region --upload
+
+# Sway (config)
+bindsym Print exec sharel capture region</code></pre>
+          </div>
         </div>
       </div>
     </section>
 
-    <section id="install" style="padding: 70px 0; background: var(--bg-surface);">
-      <div class="container" style="max-width: 800px; text-align: center;">
-        <div class="section-title">
-          <h2>Install ShareL on Linux</h2>
-          <p>One-line installation script that detects your distribution and configures desktop integration
-            automatically.</p>
+    <section id="install" class="install-section">
+      <div class="container install-wrap">
+        <h2>Get Started in Seconds</h2>
+        <p>Run the automated script to install ShareL and its dependencies on any Linux distribution.</p>
+
+        <div class="install-bar large">
+          <span class="prompt">$</span>
+          <span class="cmd">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash</span>
+          <button class="copy-btn" onclick="copyInstallCmd()">
+            <span>Copy</span>
+          </button>
         </div>
 
-        <div class="command-box" style="margin-bottom: 32px;">
-          <span class="mono">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash</span>
-          <button class="copy-btn" onclick="copyInstallCmd()">Copy</button>
-        </div>
-
-        <div
-          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; text-align: left;">
-          <div
-            style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px;">
-            <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Arch Linux /
-              Manjaro</div>
-            <code
-              style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo pacman -S gstreamer gst-plugins-base gst-plugins-good gst-plugin-pipewire ffmpeg</code>
-          </div>
-          <div
-            style="background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px;">
-            <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--primary);">Fedora / RHEL
-            </div>
-            <code
-              style="font-size: 11.5px; color: var(--text-muted); word-break: break-all;">sudo dnf install gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good ffmpeg</code>
-          </div>
+        <div class="distro-pills">
+          <span>Arch Linux / Manjaro</span>
+          <span>Fedora / RHEL</span>
+          <span>Ubuntu / Debian</span>
+          <span>openSUSE</span>
+          <span>NixOS / Void</span>
         </div>
       </div>
     </section>
   </main>
 
   <footer>
-    <div class="container">
-      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
-        <img src="sharel-logo.svg" width="22" height="22" alt="ShareL">
-        <span style="font-weight: 600; color: var(--text-main);">ShareL (ShareLinux)</span>
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <img src="sharel-logo.svg" width="20" height="20" alt="ShareL Logo">
+        <span>ShareL</span>
       </div>
-      <p>Open source screen capture, recording and file sharing for Linux.</p>
-      <p style="margin-top: 6px; color: var(--text-muted);">
-        <a href="https://github.com/44tl/ShareL" target="_blank" rel="noreferrer"
-          style="color: var(--primary); text-decoration: none;">GitHub Repository</a>
-      </p>
+      <p>Free and open source screen capture suite for Linux. Built with Rust and Tauri.</p>
+      <div class="footer-links">
+        <a href="https://github.com/44tl/ShareL" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/44tl/ShareL/blob/main/LICENSE" target="_blank" rel="noreferrer">License (MIT)</a>
+      </div>
     </div>
   </footer>
 

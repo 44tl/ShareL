@@ -102,7 +102,6 @@ async fn capture_with_grim_slurp(mode: &CaptureMode, target_path: &Path) -> Resu
             cmd.arg("-g").arg(region);
         }
         CaptureMode::Window => {
-            // Check if compositor CLI can assist in window geometry
             let (compositor, _) = detect_compositor();
             let mut region_found = false;
 
@@ -166,7 +165,6 @@ async fn capture_with_grim_slurp(mode: &CaptureMode, target_path: &Path) -> Resu
             }
 
             if !region_found {
-                // Interactive window selection with slurp borders
                 let slurp_out = Command::new("slurp")
                     .output()
                     .map_err(|e| format!("Failed to execute slurp for window select: {}", e))?;
@@ -224,8 +222,6 @@ async fn capture_with_compositor_native(
 ) -> Result<(), String> {
     match compositor {
         CompositorKind::Niri => {
-            // Niri provides native actions: screenshot, screenshot-screen, screenshot-window
-            // We can invoke niri msg action screenshot or leverage grim+slurp
             let action = match mode {
                 CaptureMode::Region => "screenshot",
                 CaptureMode::Window => "screenshot-window",
@@ -267,7 +263,6 @@ pub async fn take_screenshot_with_backend(
     let mut used_backend = "unknown".to_string();
     let mut captured = false;
 
-    // Strategy 1: If user prefers grim/slurp or on wlroots/Niri/Hyprland/Sway with grim+slurp available
     if (pref == "grim_slurp" || pref == "auto") && backends.grim && (backends.slurp || !interactive) {
         if let Ok(()) = capture_with_grim_slurp(&mode, &target_path).await {
             used_backend = "grim/slurp".to_string();
@@ -275,7 +270,6 @@ pub async fn take_screenshot_with_backend(
         }
     }
 
-    // Strategy 2: If user prefers XDG Portal or grim/slurp failed
     if !captured && (pref == "xdg_desktop_portal" || pref == "auto") && backends.xdg_desktop_portal {
         if let Ok(()) = capture_with_xdg_portal(interactive, &target_path).await {
             used_backend = "xdg-desktop-portal".to_string();
@@ -283,7 +277,6 @@ pub async fn take_screenshot_with_backend(
         }
     }
 
-    // Strategy 3: Native compositor action fallback (e.g. Niri)
     if !captured && (pref == "compositor" || pref == "auto") && backends.compositor_integration {
         if let Ok(()) = capture_with_compositor_native(&compositor, &mode, &target_path).await {
             used_backend = format!("{}-native", backends.compositor_cli_name.unwrap_or_else(|| "compositor".to_string()));
@@ -291,7 +284,6 @@ pub async fn take_screenshot_with_backend(
         }
     }
 
-    // Final fallback: try grim/slurp unconditionally if Wayland is active
     if !captured && std::env::var("WAYLAND_DISPLAY").is_ok() && backends.grim {
         if let Ok(()) = capture_with_grim_slurp(&mode, &target_path).await {
             used_backend = "grim/slurp".to_string();
@@ -299,7 +291,6 @@ pub async fn take_screenshot_with_backend(
         }
     }
 
-    // Final fallback: try XDG Desktop Portal unconditionally
     if !captured {
         if let Ok(()) = capture_with_xdg_portal(interactive, &target_path).await {
             used_backend = "xdg-desktop-portal".to_string();
