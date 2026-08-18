@@ -1,0 +1,33 @@
+[package]
+name = "sharel"
+version = "1.0.0"
+description = "ShareL - Feature-rich Screen Capture, Recording and Sharing for Linux"
+authors = ["ShareL Contributors"]
+edition = "2021"
+
+[lib]
+name = "sharel_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-ico", "image-png"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "multipart", "stream"] }
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+base64 = "0.22"
+dirs = "5.0"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+arboard = "3.4"
+tempfile = "3.12"
+open = "5.3"
+libc = "0.2"
+ashpd = { version = "0.9", default-features = false, features = ["tokio"] }
+url = "2.5"
