@@ -7,6 +7,17 @@ export default defineConfig(async () => ({
   root: "./app",
   plugins: [react()],
   clearScreen: false,
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "lucide-react",
+      "@tauri-apps/api",
+      "@tauri-apps/api/core",
+      "@tauri-apps/api/event",
+      "@tauri-apps/api/window",
+    ],
+  },
   build: {
     outDir: "../dist",
     emptyOutDir: true,
@@ -23,7 +34,7 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      ignored: ["**/src-tauri/**", "**/target/**"],
     },
   },
 }));

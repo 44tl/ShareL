@@ -36,3 +36,9 @@ libc = "0.2"
 ashpd = { version = "0.9", default-features = false, features = ["tokio"] }
 glib = "0.18"
 tauri-plugin-global-shortcut = "2"
+
+[profile.dev]
+opt-level = 0
+debug = 1
+incremental = true
+split-debuginfo = "unpacked"
