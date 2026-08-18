@@ -47,21 +47,21 @@ ShareL can be triggered from global desktop keybinds, scripts, or terminal:
 ## Installation & Requirements
 
 ### System Dependencies
-ShareL requires modern Wayland screen capture utilities:
+ShareL uses native Wayland XDG Desktop Portal and GStreamer PipeWire pipelines directly within the Rust binary:
 
 - **Arch Linux**:
   ```bash
-  sudo pacman -S grim slurp wf-recorder ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1
+  sudo pacman -S gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugin-pipewire ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1
   ```
 
 - **Fedora**:
   ```bash
-  sudo dnf install grim slurp wf-recorder ffmpeg tesseract webkit2gtk4.1-devel
+  sudo dnf install gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugin-pipewire ffmpeg tesseract webkit2gtk4.1-devel
   ```
 
 - **Ubuntu / Debian (Wayland session)**:
   ```bash
-  sudo apt install grim slurp ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev
+  sudo apt install gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-pipewire ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev
   ```
 
 ---

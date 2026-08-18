@@ -13,17 +13,17 @@ echo "Starting ${APP_NAME} installation..."
 check_pkg_manager() {
     if command -v pacman >/dev/null 2>&1; then
         echo "Detected Arch Linux system."
-        echo "Ensuring runtime dependencies: grim, slurp, wf-recorder, ffmpeg, tesseract, webkit2gtk-4.1..."
-        sudo pacman -S --needed --noconfirm grim slurp wf-recorder ffmpeg tesseract webkit2gtk-4.1 || true
+        echo "Ensuring runtime dependencies: gstreamer, gst-plugins-base, gst-plugins-good, gst-plugins-bad, ffmpeg, tesseract, webkit2gtk-4.1..."
+        sudo pacman -S --needed --noconfirm gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugin-pipewire ffmpeg tesseract webkit2gtk-4.1 || true
     elif command -v apt >/dev/null 2>&1; then
         echo "Detected Debian/Ubuntu system."
-        sudo apt update -y && sudo apt install -y grim slurp ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev || true
+        sudo apt update -y && sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-pipewire ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev || true
     elif command -v dnf >/dev/null 2>&1; then
         echo "Detected Fedora system."
-        sudo dnf install -y grim slurp wf-recorder ffmpeg tesseract webkit2gtk4.1-devel || true
+        sudo dnf install -y gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugin-pipewire ffmpeg tesseract webkit2gtk4.1-devel || true
     elif command -v zypper >/dev/null 2>&1; then
         echo "Detected openSUSE system."
-        sudo zypper install -y grim slurp ffmpeg tesseract-ocr webkit2gtk3-devel || true
+        sudo zypper install -y gstreamer gstreamer-plugins-base gstreamer-plugins-good gstreamer-plugins-bad ffmpeg tesseract-ocr webkit2gtk3-devel || true
     fi
 }
 
@@ -61,7 +61,7 @@ mkdir -p "${ICON_DIR}"
 cp -f "${TARGET_BIN}" "${INSTALL_DIR}/${BIN_NAME}"
 chmod +x "${INSTALL_DIR}/${BIN_NAME}"
 
-cp -f "${PROJECT_DIR}/public/sharel-logo.svg" "${ICON_DIR}/sharel.svg"
+cp -f "${PROJECT_DIR}/sharel-logo.svg" "${ICON_DIR}/sharel.svg"
 
 cat > "${DESKTOP_DIR}/sharel.desktop" <<EOF
 [Desktop Entry]

@@ -1,19 +1,20 @@
 use chrono::Local;
+use gstreamer as gst;
+use gstreamer::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Child, Command};
 use std::sync::Mutex;
 
-static RECORDING_PROCESS: Mutex<Option<RecordingState>> = Mutex::new(None);
+static RECORDING_PIPELINE: Mutex<Option<RecordingState>> = Mutex::new(None);
 
 pub struct RecordingState {
-    pub child: Child,
+    pub pipeline: gst::Pipeline,
     pub output_path: PathBuf,
-    pub temp_video_path: Option<PathBuf>,
     pub start_time: i64,
     pub format: String,
     pub is_gif: bool,
+    pub temp_video_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,7 +37,7 @@ pub struct RecordingResult {
 }
 
 pub fn get_recording_status() -> RecordingStatus {
-    let state = RECORDING_PROCESS.lock().unwrap();
+    let state = RECORDING_PIPELINE.lock().unwrap();
     if let Some(ref r) = *state {
         let duration = (Local::now().timestamp() - r.start_time).max(0) as u64;
         RecordingStatus {
@@ -59,13 +60,15 @@ pub fn start_recording(
     recordings_dir: &str,
     format: &str,
     fps: u32,
-    include_audio: bool,
-    region: Option<String>,
+    _include_audio: bool,
+    _region: Option<String>,
 ) -> Result<(), String> {
-    let mut state_lock = RECORDING_PROCESS.lock().unwrap();
+    let mut state_lock = RECORDING_PIPELINE.lock().unwrap();
     if state_lock.is_some() {
         return Err("A recording is already in progress".to_string());
     }
+
+    gst::init().map_err(|e| format!("Failed to initialize GStreamer: {}", e))?;
 
     let dir = PathBuf::from(recordings_dir);
     if !dir.exists() {
@@ -85,143 +88,70 @@ pub fn start_recording(
     };
 
     let record_target = if let Some(ref p) = temp_video_path {
-        p.clone()
+        p.to_string_lossy().to_string()
     } else {
-        final_path.clone()
+        final_path.to_string_lossy().to_string()
     };
 
-    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_lowercase();
-    let is_gnome = desktop.contains("gnome");
+    let framerate = fps.max(10).min(60);
 
-    let has_gpu_recorder = Command::new("which")
-        .arg("gpu-screen-recorder")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let pipe_str = format!(
+        "pipewiresrc do-timestamp=true ! videoconvert ! videorate ! video/x-raw,framerate={}/1 ! x264enc tune=zerolatency speed-preset=ultrafast ! mp4mux ! filesink location=\"{}\"",
+        framerate,
+        record_target
+    );
 
-    let has_wf = Command::new("which")
-        .arg("wf-recorder")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let pipeline = gst::parse::launch(&pipe_str)
+        .map_err(|e| format!("Failed to create GStreamer recording pipeline: {}", e))?
+        .dynamic_cast::<gst::Pipeline>()
+        .map_err(|_| "Failed to cast element to GStreamer Pipeline".to_string())?;
 
-    let child = if is_gnome && has_gpu_recorder {
-        let mut cmd = Command::new("gpu-screen-recorder");
-        cmd.arg("-w").arg("portal");
-        cmd.arg("-f").arg(fps.max(10).min(60).to_string());
-        cmd.arg("-o").arg(&record_target);
-        if include_audio {
-            cmd.arg("-a").arg("default_output");
-        }
-        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder on GNOME: {}", e))?
-    } else if has_wf && !is_gnome {
-        let mut cmd = Command::new("wf-recorder");
-        cmd.arg("-f").arg(&record_target);
-        cmd.arg("-r").arg(fps.max(10).min(60).to_string());
-
-        if let Some(geom) = region {
-            if !geom.trim().is_empty() {
-                cmd.arg("-g").arg(geom);
-            }
-        }
-
-        if include_audio {
-            cmd.arg("-a");
-        }
-
-        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
-    } else if has_gpu_recorder {
-        let mut cmd = Command::new("gpu-screen-recorder");
-        cmd.arg("-w").arg("screen");
-        cmd.arg("-f").arg(fps.max(10).min(60).to_string());
-        cmd.arg("-o").arg(&record_target);
-        if include_audio {
-            cmd.arg("-a").arg("default_output");
-        }
-        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
-    } else if has_wf {
-        let mut cmd = Command::new("wf-recorder");
-        cmd.arg("-f").arg(&record_target);
-        cmd.arg("-r").arg(fps.max(10).min(60).to_string());
-        if include_audio {
-            cmd.arg("-a");
-        }
-        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
-    } else {
-        return Err("No supported Wayland screen recorder found. Please install gpu-screen-recorder or wf-recorder.".to_string());
-    };
+    pipeline
+        .set_state(gst::State::Playing)
+        .map_err(|e| format!("Failed to start recording stream: {:?}", e))?;
 
     *state_lock = Some(RecordingState {
-        child,
+        pipeline,
         output_path: final_path,
-        temp_video_path,
         start_time: now.timestamp(),
         format: target_format.to_string(),
         is_gif,
+        temp_video_path,
     });
 
     Ok(())
 }
 
 pub fn stop_recording() -> Result<RecordingResult, String> {
-    let mut state_lock = RECORDING_PROCESS.lock().unwrap();
-    let mut state = state_lock.take().ok_or("No active recording to stop")?;
+    let mut state_lock = RECORDING_PIPELINE.lock().unwrap();
+    let state = state_lock.take().ok_or("No active recording to stop")?;
 
-    #[cfg(unix)]
-    {
-        let pid = state.child.id() as i32;
-        unsafe {
-            libc::kill(pid, libc::SIGINT);
+    let _ = state.pipeline.send_event(gst::event::Eos::new());
+
+    let bus = state.pipeline.bus().ok_or("Pipeline bus not available")?;
+    for msg in bus.iter_timed(gst::ClockTime::from_seconds(3)) {
+        if let gst::MessageView::Eos(..) = msg.view() {
+            break;
         }
     }
 
-    let _ = state.child.wait();
+    let _ = state.pipeline.set_state(gst::State::Null);
 
     let duration = (Local::now().timestamp() - state.start_time).max(1) as u64;
 
     if state.is_gif {
         if let Some(ref temp_mp4) = state.temp_video_path {
             if temp_mp4.exists() {
-                let palette_path = std::env::temp_dir().join(format!("sharel_palette_{}.png", uuid::Uuid::new_v4()));
-
-                let gen_status = Command::new("ffmpeg")
+                let _ = std::process::Command::new("ffmpeg")
                     .args([
                         "-y",
                         "-i",
                         temp_mp4.to_str().unwrap_or(""),
                         "-vf",
-                        "fps=15,scale=flags=lanczos,palettegen",
-                        palette_path.to_str().unwrap_or(""),
+                        "fps=15,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                        state.output_path.to_str().unwrap_or(""),
                     ])
                     .status();
-
-                if gen_status.map(|s| s.success()).unwrap_or(false) && palette_path.exists() {
-                    let _ = Command::new("ffmpeg")
-                        .args([
-                            "-y",
-                            "-i",
-                            temp_mp4.to_str().unwrap_or(""),
-                            "-i",
-                            palette_path.to_str().unwrap_or(""),
-                            "-lavfi",
-                            "fps=15,scale=flags=lanczos [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=3",
-                            state.output_path.to_str().unwrap_or(""),
-                        ])
-                        .status();
-
-                    let _ = fs::remove_file(palette_path);
-                } else {
-                    let _ = Command::new("ffmpeg")
-                        .args([
-                            "-y",
-                            "-i",
-                            temp_mp4.to_str().unwrap_or(""),
-                            "-vf",
-                            "fps=12",
-                            state.output_path.to_str().unwrap_or(""),
-                        ])
-                        .status();
-                }
 
                 let _ = fs::remove_file(temp_mp4);
             }
