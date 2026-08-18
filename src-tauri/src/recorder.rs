@@ -13,6 +13,7 @@ pub struct RecordingState {
     pub start_time: i64,
     pub format: String,
     pub is_gif: bool,
+    pub fps: u32,
     pub temp_video_path: Option<PathBuf>,
 }
 
@@ -90,7 +91,7 @@ pub fn start_recording(
         final_path.to_string_lossy().to_string()
     };
 
-    let framerate = fps.max(10).min(60);
+    let target_fps = if is_gif { fps.max(30).min(60) } else { fps.max(30).min(60) };
 
     let has_gpu_recorder = Command::new("which")
         .arg("gpu-screen-recorder")
@@ -107,7 +108,9 @@ pub fn start_recording(
     let child = if has_gpu_recorder {
         let mut cmd = Command::new("gpu-screen-recorder");
         cmd.arg("-w").arg("screen");
-        cmd.arg("-f").arg(framerate.to_string());
+        cmd.arg("-f").arg(target_fps.to_string());
+        cmd.arg("-k").arg("h264");
+        cmd.arg("-q").arg("ultra");
         cmd.arg("-o").arg(&record_target);
         if include_audio {
             cmd.arg("-a").arg("default_output");
@@ -116,7 +119,7 @@ pub fn start_recording(
     } else if has_wf {
         let mut cmd = Command::new("wf-recorder");
         cmd.arg("-f").arg(&record_target);
-        cmd.arg("-r").arg(framerate.to_string());
+        cmd.arg("-r").arg(target_fps.to_string());
 
         if let Some(geom) = region {
             if !geom.trim().is_empty() {
@@ -139,6 +142,7 @@ pub fn start_recording(
         start_time: now.timestamp(),
         format: target_format.to_string(),
         is_gif,
+        fps: target_fps,
         temp_video_path,
     });
 
@@ -164,13 +168,18 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
     if state.is_gif {
         if let Some(ref temp_mp4) = state.temp_video_path {
             if temp_mp4.exists() {
+                let filter_graph = format!(
+                    "fps={},scale=iw:ih:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff:reserve_transparent=0[p];[s1][p]paletteuse=dither=floyd_steinberg:diff_mode=rectangle",
+                    state.fps
+                );
+
                 let _ = Command::new("ffmpeg")
                     .args([
                         "-y",
                         "-i",
                         temp_mp4.to_str().unwrap_or(""),
                         "-vf",
-                        "fps=15,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                        &filter_graph,
                         state.output_path.to_str().unwrap_or(""),
                     ])
                     .status();

@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (recordingStatus.is_recording) {
       onStopRecording();
     } else {
-      onStartRecording('gif', 15, false);
+      onStartRecording('gif', 30, false);
     }
   };
 

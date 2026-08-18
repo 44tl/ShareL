@@ -280,7 +280,7 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
           <button
-            onClick={() => onStartRecording('gif', 15, false)}
+            onClick={() => onStartRecording('gif', 30, false)}
             style={{
               display: 'flex',
               alignItems: 'center',
