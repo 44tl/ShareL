@@ -121,6 +121,8 @@ export interface RecordingOptions {
 export interface RecordingStatus {
   is_recording: boolean;
   is_paused?: boolean;
+  is_processing?: boolean;
+  processing_message?: string;
   duration_seconds: number;
   output_path?: string;
   format?: string;
@@ -141,6 +143,14 @@ export interface RecordingResult {
   timestamp: number;
   backend_used?: string;
   auto_upload?: boolean;
+  is_processing?: boolean;
+}
+
+export interface RecordingProcessingEvent {
+  id: string;
+  file_name: string;
+  format: string;
+  message: string;
 }
 
 export interface CustomUploaderConfig {

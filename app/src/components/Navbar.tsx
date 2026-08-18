@@ -70,6 +70,35 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {recordingStatus.is_processing && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+              color: 'var(--md-sys-color-primary)',
+              border: '1px solid rgba(99, 102, 241, 0.35)',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-pill)',
+              fontSize: '12.5px',
+              fontWeight: 600,
+            }}
+          >
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                border: '2px solid rgba(99, 102, 241, 0.3)',
+                borderTopColor: 'var(--md-sys-color-primary)',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+            <span>Processing Recording...</span>
+          </div>
+        )}
+
         {recordingStatus.is_recording && (
           <div
             style={{

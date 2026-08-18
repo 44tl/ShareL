@@ -17,8 +17,9 @@ use history::{
     toggle_favorite_history_item, update_history_item, HistoryItem,
 };
 use recorder::{
-    get_recording_status, list_webcam_devices, pause_recording, resume_recording, start_recording,
-    start_recording_advanced, stop_recording, RecordingOptions, RecordingResult, RecordingStatus,
+    finalize_recording_sync, get_recording_status, list_webcam_devices, pause_recording,
+    resume_recording, start_recording, start_recording_advanced, stop_recording_process,
+    RecordingOptions, RecordingResult, RecordingStatus,
 };
 use std::path::Path;
 use std::sync::Mutex;
@@ -332,45 +333,122 @@ fn list_webcam_devices_cmd() -> Vec<String> {
 
 #[tauri::command]
 fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, String> {
-    let result = stop_recording()?;
+    let stopped = stop_recording_process()?;
 
-    let history_item = HistoryItem {
-        id: result.id.clone(),
-        title: result.file_name.clone(),
-        file_path: result.file_path.clone(),
-        file_name: result.file_name.clone(),
-        file_size: result.file_size,
-        item_type: "recording".to_string(),
-        format: result.format.clone(),
-        width: None,
-        height: None,
-        duration_seconds: Some(result.duration_seconds),
-        timestamp: result.timestamp,
-        upload_url: None,
-        deletion_url: None,
-        thumbnail_url: None,
-        is_favorite: false,
-    };
+    if stopped.is_gif {
+        let file_name = stopped
+            .output_path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
 
-    let _ = add_history_item(history_item);
+        let initial_result = RecordingResult {
+            id: stopped.id.clone(),
+            file_path: stopped.output_path.to_string_lossy().to_string(),
+            file_name: file_name.clone(),
+            file_size: 0,
+            duration_seconds: stopped.duration_seconds,
+            format: stopped.format.clone(),
+            timestamp: stopped.start_time,
+            backend_used: stopped.backend.clone(),
+            auto_upload: stopped.auto_upload,
+            is_processing: true,
+        };
 
-    notify_history_changed(&app);
+        let _ = app.emit(
+            "recording://processing_start",
+            serde_json::json!({
+                "id": stopped.id.clone(),
+                "file_name": file_name,
+                "format": stopped.format.clone(),
+                "message": "Your recording is being processed..."
+            }),
+        );
 
-    let cfg = load_config();
-    if (result.auto_upload || cfg.recording_auto_upload) && !cfg.active_uploader_id.is_empty() {
-        let uploader = list_custom_uploaders()
-            .into_iter()
-            .find(|u| u.id == cfg.active_uploader_id);
-        if let Some(uploader) = uploader {
-            let handle = app.clone();
-            let file_path = result.file_path.clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = perform_upload(&handle, uploader, &file_path).await;
-            });
+        let handle = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            if let Ok(result) = finalize_recording_sync(stopped) {
+                let history_item = HistoryItem {
+                    id: result.id.clone(),
+                    title: result.file_name.clone(),
+                    file_path: result.file_path.clone(),
+                    file_name: result.file_name.clone(),
+                    file_size: result.file_size,
+                    item_type: "recording".to_string(),
+                    format: result.format.clone(),
+                    width: None,
+                    height: None,
+                    duration_seconds: Some(result.duration_seconds),
+                    timestamp: result.timestamp,
+                    upload_url: None,
+                    deletion_url: None,
+                    thumbnail_url: None,
+                    is_favorite: false,
+                };
+
+                let _ = add_history_item(history_item);
+                notify_history_changed(&handle);
+
+                let cfg = load_config();
+                if (result.auto_upload || cfg.recording_auto_upload) && !cfg.active_uploader_id.is_empty() {
+                    let uploader = list_custom_uploaders()
+                        .into_iter()
+                        .find(|u| u.id == cfg.active_uploader_id);
+                    if let Some(uploader) = uploader {
+                        let app_handle = handle.clone();
+                        let file_path = result.file_path.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = perform_upload(&app_handle, uploader, &file_path).await;
+                        });
+                    }
+                }
+
+                let _ = handle.emit("recording://processing_complete", &result);
+            }
+        });
+
+        Ok(initial_result)
+    } else {
+        let result = finalize_recording_sync(stopped)?;
+
+        let history_item = HistoryItem {
+            id: result.id.clone(),
+            title: result.file_name.clone(),
+            file_path: result.file_path.clone(),
+            file_name: result.file_name.clone(),
+            file_size: result.file_size,
+            item_type: "recording".to_string(),
+            format: result.format.clone(),
+            width: None,
+            height: None,
+            duration_seconds: Some(result.duration_seconds),
+            timestamp: result.timestamp,
+            upload_url: None,
+            deletion_url: None,
+            thumbnail_url: None,
+            is_favorite: false,
+        };
+
+        let _ = add_history_item(history_item);
+        notify_history_changed(&app);
+
+        let cfg = load_config();
+        if (result.auto_upload || cfg.recording_auto_upload) && !cfg.active_uploader_id.is_empty() {
+            let uploader = list_custom_uploaders()
+                .into_iter()
+                .find(|u| u.id == cfg.active_uploader_id);
+            if let Some(uploader) = uploader {
+                let handle = app.clone();
+                let file_path = result.file_path.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = perform_upload(&handle, uploader, &file_path).await;
+                });
+            }
         }
-    }
 
-    Ok(result)
+        Ok(result)
+    }
 }
 
 #[tauri::command]

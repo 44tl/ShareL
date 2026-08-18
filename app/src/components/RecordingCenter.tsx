@@ -284,6 +284,65 @@ export const RecordingCenter: React.FC<RecordingCenterProps> = ({
         </div>
       </div>
 
+      {recordingStatus.is_processing && (
+        <div
+          style={{
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            border: '1px solid rgba(99, 102, 241, 0.35)',
+            borderRadius: 'var(--radius-md)',
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  border: '2px solid rgba(99, 102, 241, 0.3)',
+                  borderTopColor: 'var(--md-sys-color-primary)',
+                  animation: 'spin 0.8s linear infinite',
+                }}
+              />
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+                {recordingStatus.processing_message || 'Your recording is being processed in the background...'}
+              </span>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-variant)' }}>
+              Palette optimization &amp; encoding
+            </span>
+          </div>
+
+          <div
+            style={{
+              width: '100%',
+              height: '6px',
+              borderRadius: 'var(--radius-pill)',
+              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                width: '40%',
+                borderRadius: 'var(--radius-pill)',
+                backgroundColor: 'var(--md-sys-color-primary)',
+                animation: 'indeterminateProgress 1.4s infinite ease-in-out',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--md-sys-color-on-surface-muted)' }}>
           Recording Target

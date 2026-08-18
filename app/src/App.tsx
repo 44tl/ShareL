@@ -176,6 +176,36 @@ export const App: React.FC = () => {
             }
           })
         );
+
+        unlisteners.push(
+          await listen('recording://processing_start', (e) => {
+            const p = e.payload as { id: string; file_name: string; format: string; message: string };
+            setRecordingStatus({
+              is_recording: false,
+              is_paused: false,
+              is_processing: true,
+              processing_message: p.message || 'Your recording is being processed...',
+              duration_seconds: 0,
+              format: p.format,
+            });
+            showToast('Your recording is being processed in the background...', 'info');
+          })
+        );
+
+        unlisteners.push(
+          await listen('recording://processing_complete', (e) => {
+            const res = e.payload as RecordingResult;
+            setLastRecording(res);
+            setRecordingStatus({
+              is_recording: false,
+              is_paused: false,
+              is_processing: false,
+              duration_seconds: 0,
+            });
+            showToast(`Recording processed: ${res.file_name} (${res.duration_seconds}s)`, 'success');
+            refreshHistory();
+          })
+        );
       })
       .catch(() => {});
 
@@ -314,20 +344,33 @@ export const App: React.FC = () => {
   const handleStopRecording = async () => {
     try {
       const result = await invokeCommand<RecordingResult>('stop_screen_recording');
-      setLastRecording(result);
-      setRecordingStatus({
-        is_recording: false,
-        is_paused: false,
-        duration_seconds: 0,
-      });
-      showToast(`Recording saved: ${result.file_name} (${result.duration_seconds}s)`, 'success');
-
-      await refreshHistory();
+      if (result.is_processing) {
+        setRecordingStatus({
+          is_recording: false,
+          is_paused: false,
+          is_processing: true,
+          processing_message: 'Your recording is being processed...',
+          duration_seconds: 0,
+          format: result.format,
+        });
+        showToast('Your recording is being processed...', 'info');
+      } else {
+        setLastRecording(result);
+        setRecordingStatus({
+          is_recording: false,
+          is_paused: false,
+          is_processing: false,
+          duration_seconds: 0,
+        });
+        showToast(`Recording saved: ${result.file_name} (${result.duration_seconds}s)`, 'success');
+        await refreshHistory();
+      }
     } catch (err) {
       showToast(`Failed to stop recording: ${err}`, 'error');
       setRecordingStatus({
         is_recording: false,
         is_paused: false,
+        is_processing: false,
         duration_seconds: 0,
       });
     }
@@ -595,6 +638,61 @@ export const App: React.FC = () => {
         onStopRecording={handleStopRecording}
         activeView={activeView}
       />
+
+      {recordingStatus.is_processing && (
+        <div
+          style={{
+            backgroundColor: 'rgba(99, 102, 241, 0.12)',
+            borderBottom: '1px solid rgba(99, 102, 241, 0.3)',
+            padding: '10px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            zIndex: 40,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '16px',
+                height: '16px',
+                borderRadius: '50%',
+                border: '2px solid rgba(99, 102, 241, 0.3)',
+                borderTopColor: 'var(--md-sys-color-primary)',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+              {recordingStatus.processing_message || 'Your recording is being processed in the background...'}
+            </span>
+          </div>
+
+          <div
+            style={{
+              width: '180px',
+              height: '5px',
+              borderRadius: 'var(--radius-pill)',
+              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                width: '40%',
+                borderRadius: 'var(--radius-pill)',
+                backgroundColor: 'var(--md-sys-color-primary)',
+                animation: 'indeterminateProgress 1.4s infinite ease-in-out',
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar

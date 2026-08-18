@@ -4,6 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 
 static RECORDING_PROCESS: Mutex<Option<RecordingState>> = Mutex::new(None);
 
@@ -73,6 +75,7 @@ impl Default for RecordingOptions {
 pub struct RecordingStatus {
     pub is_recording: bool,
     pub is_paused: bool,
+    pub is_processing: bool,
     pub duration_seconds: u64,
     pub output_path: Option<String>,
     pub format: Option<String>,
@@ -94,6 +97,15 @@ pub struct RecordingResult {
     pub timestamp: i64,
     pub backend_used: String,
     pub auto_upload: bool,
+    pub is_processing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecordingProcessingEvent {
+    pub id: String,
+    pub file_name: String,
+    pub format: String,
+    pub message: String,
 }
 
 pub fn list_webcam_devices() -> Vec<String> {
@@ -251,6 +263,7 @@ pub fn get_recording_status() -> RecordingStatus {
         RecordingStatus {
             is_recording: true,
             is_paused: r.is_paused,
+            is_processing: false,
             duration_seconds: duration,
             output_path: Some(r.output_path.to_string_lossy().to_string()),
             format: Some(r.format.clone()),
@@ -264,6 +277,7 @@ pub fn get_recording_status() -> RecordingStatus {
         RecordingStatus {
             is_recording: false,
             is_paused: false,
+            is_processing: false,
             duration_seconds: 0,
             output_path: None,
             format: None,
@@ -285,9 +299,11 @@ pub fn pause_recording() -> Result<(), String> {
         #[cfg(unix)]
         {
             let pid = state.child.id() as i32;
-            let res = unsafe { libc::kill(pid, libc::SIGSTOP) };
-            if res != 0 {
-                return Err("Failed to pause recording process".to_string());
+            if pid > 1 {
+                let res = unsafe { libc::kill(pid, libc::SIGSTOP) };
+                if res != 0 {
+                    return Err("Failed to pause recording process".to_string());
+                }
             }
         }
         state.is_paused = true;
@@ -306,9 +322,11 @@ pub fn resume_recording() -> Result<(), String> {
         #[cfg(unix)]
         {
             let pid = state.child.id() as i32;
-            let res = unsafe { libc::kill(pid, libc::SIGCONT) };
-            if res != 0 {
-                return Err("Failed to resume recording process".to_string());
+            if pid > 1 {
+                let res = unsafe { libc::kill(pid, libc::SIGCONT) };
+                if res != 0 {
+                    return Err("Failed to resume recording process".to_string());
+                }
             }
         }
         state.is_paused = false;
@@ -462,6 +480,9 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
             cmd.arg("-a").arg("default_output");
         }
 
+        #[cfg(unix)]
+        cmd.process_group(0);
+
         let child = cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?;
         (child, "gpu-screen-recorder".to_string())
     } else if (pref == "wf-recorder" || (pref == "auto" && has_wf) || (!has_gpu_recorder && has_wf)) && has_wf {
@@ -491,6 +512,9 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         if should_include_audio {
             cmd.arg("-a");
         }
+
+        #[cfg(unix)]
+        cmd.process_group(0);
 
         let child = cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?;
         (child, "wf-recorder".to_string())
@@ -532,6 +556,9 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         cmd.arg("-b:v").arg(format!("{}k", bitrate_kbps));
         cmd.arg("-preset").arg("ultrafast");
         cmd.arg(&record_target);
+
+        #[cfg(unix)]
+        cmd.process_group(0);
 
         let child = cmd.spawn().map_err(|e| format!("Failed to spawn ffmpeg recorder: {}", e))?;
         (child, "ffmpeg".to_string())
@@ -587,33 +614,88 @@ pub fn start_recording(
     })
 }
 
-pub fn stop_recording() -> Result<RecordingResult, String> {
+#[derive(Debug, Clone)]
+pub struct StoppedRecordingState {
+    pub id: String,
+    pub output_path: PathBuf,
+    pub duration_seconds: u64,
+    pub format: String,
+    pub is_gif: bool,
+    pub fps: u32,
+    pub backend: String,
+    pub auto_upload: bool,
+    pub temp_video_path: Option<PathBuf>,
+    pub start_time: i64,
+}
+
+pub fn stop_recording_process() -> Result<StoppedRecordingState, String> {
     let mut state_lock = RECORDING_PROCESS.lock().unwrap();
     let mut state = state_lock.take().ok_or("No active recording to stop")?;
 
     #[cfg(unix)]
     {
         let pid = state.child.id() as i32;
-        if state.is_paused {
-            unsafe {
-                libc::kill(pid, libc::SIGCONT);
+        if pid > 1 {
+            if let Ok(None) = state.child.try_wait() {
+                if state.is_paused {
+                    unsafe {
+                        libc::kill(pid, libc::SIGCONT);
+                    }
+                }
+                unsafe {
+                    libc::kill(pid, libc::SIGINT);
+                }
             }
-        }
-        unsafe {
-            libc::kill(pid, libc::SIGINT);
         }
     }
 
-    let _ = state.child.wait();
+    let start_wait = std::time::Instant::now();
+    loop {
+        match state.child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => {
+                if start_wait.elapsed().as_millis() > 3000 {
+                    #[cfg(unix)]
+                    {
+                        let pid = state.child.id() as i32;
+                        if pid > 1 {
+                            unsafe {
+                                libc::kill(pid, libc::SIGTERM);
+                            }
+                        }
+                    }
+                    let _ = state.child.wait();
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(_) => break,
+        }
+    }
 
     let duration = (Local::now().timestamp() - state.start_time).max(1) as u64;
 
-    if state.is_gif {
-        if let Some(ref temp_mp4) = state.temp_video_path {
+    Ok(StoppedRecordingState {
+        id: uuid::Uuid::new_v4().to_string(),
+        output_path: state.output_path,
+        duration_seconds: duration,
+        format: state.format,
+        is_gif: state.is_gif,
+        fps: state.fps,
+        backend: state.backend,
+        auto_upload: state.auto_upload,
+        temp_video_path: state.temp_video_path,
+        start_time: state.start_time,
+    })
+}
+
+pub fn finalize_recording_sync(stopped: StoppedRecordingState) -> Result<RecordingResult, String> {
+    if stopped.is_gif {
+        if let Some(ref temp_mp4) = stopped.temp_video_path {
             if temp_mp4.exists() {
                 let filter_graph = format!(
                     "fps={},scale=iw:ih:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff:reserve_transparent=0[p];[s1][p]paletteuse=dither=floyd_steinberg:diff_mode=rectangle",
-                    state.fps
+                    stopped.fps
                 );
 
                 let _ = Command::new("ffmpeg")
@@ -623,7 +705,7 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
                         temp_mp4.to_str().unwrap_or(""),
                         "-vf",
                         &filter_graph,
-                        state.output_path.to_str().unwrap_or(""),
+                        stopped.output_path.to_str().unwrap_or(""),
                     ])
                     .status();
 
@@ -632,23 +714,29 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
         }
     }
 
-    if !state.output_path.exists() {
+    if !stopped.output_path.exists() {
         return Err("Recording output file was not produced.".to_string());
     }
 
-    let metadata = fs::metadata(&state.output_path).map_err(|e| e.to_string())?;
+    let metadata = fs::metadata(&stopped.output_path).map_err(|e| e.to_string())?;
     let file_size = metadata.len();
-    let file_name = state.output_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let file_name = stopped.output_path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
     Ok(RecordingResult {
-        id: uuid::Uuid::new_v4().to_string(),
-        file_path: state.output_path.to_string_lossy().to_string(),
+        id: stopped.id,
+        file_path: stopped.output_path.to_string_lossy().to_string(),
         file_name,
         file_size,
-        duration_seconds: duration,
-        format: state.format,
-        timestamp: state.start_time,
-        backend_used: state.backend,
-        auto_upload: state.auto_upload,
+        duration_seconds: stopped.duration_seconds,
+        format: stopped.format,
+        timestamp: stopped.start_time,
+        backend_used: stopped.backend,
+        auto_upload: stopped.auto_upload,
+        is_processing: false,
     })
+}
+
+pub fn stop_recording() -> Result<RecordingResult, String> {
+    let stopped = stop_recording_process()?;
+    finalize_recording_sync(stopped)
 }
