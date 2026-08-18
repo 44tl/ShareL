@@ -92,9 +92,6 @@ pub fn start_recording(
 
     let framerate = fps.max(10).min(60);
 
-    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_lowercase();
-    let is_gnome = desktop.contains("gnome");
-
     let has_gpu_recorder = Command::new("which")
         .arg("gpu-screen-recorder")
         .output()
@@ -107,16 +104,16 @@ pub fn start_recording(
         .map(|o| o.status.success())
         .unwrap_or(false);
 
-    let child = if is_gnome && has_gpu_recorder {
+    let child = if has_gpu_recorder {
         let mut cmd = Command::new("gpu-screen-recorder");
-        cmd.arg("-w").arg("portal");
+        cmd.arg("-w").arg("screen");
         cmd.arg("-f").arg(framerate.to_string());
         cmd.arg("-o").arg(&record_target);
         if include_audio {
             cmd.arg("-a").arg("default_output");
         }
         cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
-    } else if has_wf && !is_gnome {
+    } else if has_wf {
         let mut cmd = Command::new("wf-recorder");
         cmd.arg("-f").arg(&record_target);
         cmd.arg("-r").arg(framerate.to_string());
@@ -132,25 +129,8 @@ pub fn start_recording(
         }
 
         cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
-    } else if has_gpu_recorder {
-        let mut cmd = Command::new("gpu-screen-recorder");
-        cmd.arg("-w").arg("portal");
-        cmd.arg("-f").arg(framerate.to_string());
-        cmd.arg("-o").arg(&record_target);
-        if include_audio {
-            cmd.arg("-a").arg("default_output");
-        }
-        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
-    } else if has_wf {
-        let mut cmd = Command::new("wf-recorder");
-        cmd.arg("-f").arg(&record_target);
-        cmd.arg("-r").arg(framerate.to_string());
-        if include_audio {
-            cmd.arg("-a");
-        }
-        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
     } else {
-        return Err("No supported screen recorder backend available on this system.".to_string());
+        return Err("No supported screen recorder backend found on this system.".to_string());
     };
 
     *state_lock = Some(RecordingState {
