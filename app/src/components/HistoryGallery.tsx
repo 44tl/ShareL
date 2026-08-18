@@ -353,12 +353,22 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({
                       >
                         {item.upload_url}
                       </span>
-                      <button
-                        onClick={() => onOpenLink(item.upload_url!)}
-                        style={{ color: 'var(--md-sys-color-on-surface-muted)' }}
-                      >
-                        <ExternalLink size={13} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={() => onCopyText(item.upload_url!)}
+                          style={{ color: 'var(--md-sys-color-on-surface-muted)' }}
+                          title="Copy Link"
+                        >
+                          <Clipboard size={13} />
+                        </button>
+                        <button
+                          onClick={() => onOpenLink(item.upload_url!)}
+                          style={{ color: 'var(--md-sys-color-on-surface-muted)' }}
+                          title="Open Link"
+                        >
+                          <ExternalLink size={13} />
+                        </button>
+                      </div>
                     </div>
                   )}
 

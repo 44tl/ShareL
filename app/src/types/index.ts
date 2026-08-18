@@ -13,6 +13,17 @@ export interface AfterUploadTasks {
   show_notification: boolean;
 }
 
+export interface GlobalShortcuts {
+  capture_region: string;
+  capture_fullscreen: string;
+  capture_window: string;
+  capture_active_screen: string;
+  open_main_window: string;
+  stop_recording: string;
+  upload_last_capture: string;
+  ocr_last_capture: string;
+}
+
 export interface AppConfig {
   save_directory: string;
   recordings_directory: string;
@@ -26,6 +37,7 @@ export interface AppConfig {
   active_uploader_id: string;
   theme: string;
   minimize_to_tray: boolean;
+  shortcuts: GlobalShortcuts;
 }
 
 export interface CaptureResult {
@@ -85,6 +97,49 @@ export interface UploadResult {
   raw_response: string;
   status_code: number;
   duration_ms: number;
+}
+
+export interface UploadJobStartEvent {
+  job_id: string;
+  uploader_id: string;
+  uploader_name: string;
+  file_path: string;
+  file_name: string;
+}
+
+export interface UploadJobProgressEvent {
+  job_id: string;
+  progress: number;
+  bytes_sent: number;
+  bytes_total: number;
+}
+
+export interface UploadJobCompleteEvent {
+  job_id: string;
+  success: boolean;
+  url?: string;
+  deletion_url?: string;
+  thumbnail_url?: string;
+  error_message?: string;
+  status_code?: number;
+  duration_ms?: number;
+}
+
+export interface UploadJob {
+  jobId: string;
+  uploaderId: string;
+  uploaderName: string;
+  filePath: string;
+  fileName: string;
+  progress: number;
+  bytesSent: number;
+  bytesTotal: number;
+  status: 'uploading' | 'success' | 'error';
+  url?: string;
+  deletionUrl?: string;
+  error?: string;
+  statusCode?: number;
+  durationMs?: number;
 }
 
 export interface HistoryItem {

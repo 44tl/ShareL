@@ -12,20 +12,193 @@ use history::{
     toggle_favorite_history_item, update_history_item, HistoryItem,
 };
 use recorder::{get_recording_status, start_recording, stop_recording, RecordingResult, RecordingStatus};
+use std::path::Path;
+use std::sync::Mutex;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+use tools::{extract_text_ocr, open_url_browser, read_file_as_data_url, save_annotated_image, show_in_folder, OcrResult};
+use uploader::{
+    delete_custom_uploader, execute_upload_with_progress, list_custom_uploaders, parse_sxcu_file,
+    save_custom_uploader, CustomUploaderConfig, UploadResult,
+};
+
+static REGISTERED_SHORTCUTS: Mutex<Vec<Shortcut>> = Mutex::new(Vec::new());
 
 fn notify_history_changed(app: &tauri::AppHandle) {
     let _ = app.emit("history://changed", ());
 }
-use tools::{extract_text_ocr, open_url_browser, read_file_as_data_url, save_annotated_image, show_in_folder, OcrResult};
-use uploader::{
-    delete_custom_uploader, execute_upload, list_custom_uploaders, parse_sxcu_file,
-    save_custom_uploader, CustomUploaderConfig, UploadResult,
-};
+
+fn shortcut_map(cfg: &AppConfig) -> Vec<(Shortcut, &'static str)> {
+    let pairs: [(&String, &'static str); 8] = [
+        (&cfg.shortcuts.capture_region, "region"),
+        (&cfg.shortcuts.capture_fullscreen, "fullscreen"),
+        (&cfg.shortcuts.capture_window, "window"),
+        (&cfg.shortcuts.capture_active_screen, "active"),
+        (&cfg.shortcuts.open_main_window, "open_main_window"),
+        (&cfg.shortcuts.stop_recording, "stop_recording"),
+        (&cfg.shortcuts.upload_last_capture, "upload_last_capture"),
+        (&cfg.shortcuts.ocr_last_capture, "ocr_last_capture"),
+    ];
+    pairs
+        .iter()
+        .filter_map(|(raw, action)| {
+            if raw.is_empty() {
+                return None;
+            }
+            raw.parse::<Shortcut>().ok().map(|sc| (sc, *action))
+        })
+        .collect()
+}
+
+fn apply_global_shortcuts(app: &tauri::AppHandle) {
+    let mut registered = REGISTERED_SHORTCUTS.lock().unwrap();
+    for sc in registered.iter() {
+        let _ = app.global_shortcut().unregister(*sc);
+    }
+    registered.clear();
+    let cfg = load_config();
+    for (sc, _) in shortcut_map(&cfg) {
+        if app.global_shortcut().register(sc).is_ok() {
+            registered.push(sc);
+        }
+    }
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn upload_last_capture(app: &tauri::AppHandle) {
+    let history = load_history();
+    let Some(item) = history.into_iter().find(|i| i.item_type == "image") else {
+        return;
+    };
+    let cfg = load_config();
+    let Some(uploader) = list_custom_uploaders()
+        .into_iter()
+        .find(|u| u.id == cfg.active_uploader_id)
+    else {
+        return;
+    };
+    let handle = app.clone();
+    let file_path = item.file_path.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = perform_upload(&handle, uploader, &file_path).await;
+    });
+}
+
+fn ocr_last_capture(app: &tauri::AppHandle) {
+    let history = load_history();
+    let Some(item) = history.into_iter().find(|i| i.item_type == "image") else {
+        return;
+    };
+    let res = extract_text_ocr(&item.file_path);
+    if res.success {
+        let _ = copy_text_to_clipboard(&res.text);
+        let _ = app.emit("ocr://result", serde_json::json!({ "success": true, "text": res.text }));
+    } else {
+        let _ = app.emit("ocr://result", serde_json::json!({ "success": false, "error": res.error }));
+    }
+}
+
+async fn perform_upload(
+    app: &tauri::AppHandle,
+    uploader: CustomUploaderConfig,
+    file_path: &str,
+) -> Result<UploadResult, String> {
+    let job_id = uuid::Uuid::new_v4().to_string();
+    let file_name = Path::new(file_path)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+
+    let _ = app.emit(
+        "upload://start",
+        serde_json::json!({
+            "job_id": job_id,
+            "uploader_id": uploader.id,
+            "uploader_name": uploader.name,
+            "file_path": file_path,
+            "file_name": file_name,
+        }),
+    );
+
+    let progress_app = app.clone();
+    let progress_job_id = job_id.clone();
+    let result = execute_upload_with_progress(&uploader, file_path, move |sent, total| {
+        let progress = if total > 0 {
+            (sent as f64 / total as f64) * 100.0
+        } else {
+            0.0
+        };
+        let _ = progress_app.emit(
+            "upload://progress",
+            serde_json::json!({
+                "job_id": progress_job_id,
+                "progress": progress,
+                "bytes_sent": sent,
+                "bytes_total": total,
+            }),
+        );
+    })
+    .await;
+
+    let result = match result {
+        Ok(r) => r,
+        Err(e) => {
+            let _ = app.emit(
+                "upload://complete",
+                serde_json::json!({
+                    "job_id": job_id,
+                    "success": false,
+                    "error_message": e,
+                }),
+            );
+            return Err(e);
+        }
+    };
+
+    if result.success {
+        if let Some(ref url) = result.url {
+            let cfg = load_config();
+            if cfg.after_upload.copy_url_to_clipboard {
+                let _ = copy_text_to_clipboard(url);
+            }
+            if cfg.after_upload.open_url_in_browser {
+                let _ = open_url_browser(url);
+            }
+
+            let history = load_history();
+            if let Some(item) = history.iter().find(|i| i.file_path == file_path) {
+                let _ = update_history_item(&item.id, Some(url.clone()), result.deletion_url.clone());
+                notify_history_changed(app);
+            }
+        }
+    }
+
+    let _ = app.emit(
+        "upload://complete",
+        serde_json::json!({
+            "job_id": job_id,
+            "success": result.success,
+            "url": result.url,
+            "deletion_url": result.deletion_url,
+            "thumbnail_url": result.thumbnail_url,
+            "error_message": result.error_message,
+            "status_code": result.status_code,
+            "duration_ms": result.duration_ms,
+        }),
+    );
+
+    Ok(result)
+}
 
 #[tauri::command]
 fn get_app_config() -> AppConfig {
@@ -33,11 +206,12 @@ fn get_app_config() -> AppConfig {
 }
 
 #[tauri::command]
-fn update_app_config(config: AppConfig) -> Result<(), String> {
-    save_config(&config)
+fn update_app_config(app: tauri::AppHandle, config: AppConfig) -> Result<(), String> {
+    save_config(&config)?;
+    apply_global_shortcuts(&app);
+    Ok(())
 }
 
-// TODO: hmm.. maybe change these?
 #[tauri::command]
 async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> Result<CaptureResult, String> {
     let cfg = load_config();
@@ -56,7 +230,7 @@ async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> R
     )
     .await?;
 
-    let p = std::path::Path::new(&result.file_path);
+    let p = Path::new(&result.file_path);
 
     if cfg.after_capture.copy_to_clipboard {
         let _ = copy_image_to_clipboard(p);
@@ -84,6 +258,19 @@ async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> R
 
     notify_history_changed(&app);
 
+    if cfg.after_capture.upload_to_host && !cfg.active_uploader_id.is_empty() {
+        let uploader = list_custom_uploaders()
+            .into_iter()
+            .find(|u| u.id == cfg.active_uploader_id);
+        if let Some(uploader) = uploader {
+            let handle = app.clone();
+            let file_path = result.file_path.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = perform_upload(&handle, uploader, &file_path).await;
+            });
+        }
+    }
+
     Ok(result)
 }
 
@@ -97,7 +284,6 @@ fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Resu
 fn stop_screen_recording(app: tauri::AppHandle) -> Result<RecordingResult, String> {
     let result = stop_recording()?;
 
-    // might need to find better solution
     let history_item = HistoryItem {
         id: result.id.clone(),
         title: result.file_name.clone(),
@@ -158,27 +344,7 @@ async fn upload_file(app: tauri::AppHandle, uploader_id: String, file_path: Stri
         .find(|u| u.id == uploader_id)
         .ok_or_else(|| "Uploader configuration not found".to_string())?;
 
-    let result = execute_upload(&uploader, &file_path).await?;
-    let cfg = load_config();
-
-    if result.success {
-        if let Some(ref url) = result.url {
-            if cfg.after_upload.copy_url_to_clipboard {
-                let _ = copy_text_to_clipboard(url);
-            }
-            if cfg.after_upload.open_url_in_browser {
-                let _ = open_url_browser(url);
-            }
-
-            let history = load_history();
-            if let Some(item) = history.iter().find(|i| i.file_path == file_path) {
-                let _ = update_history_item(&item.id, Some(url.clone()), result.deletion_url.clone());
-                notify_history_changed(&app);
-            }
-        }
-    }
-
-    Ok(result)
+    perform_upload(&app, uploader, &file_path).await
 }
 
 #[tauri::command]
@@ -256,36 +422,45 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     if event.state() == ShortcutState::Pressed {
-                        let print_screen: Shortcut = "PrintScreen".parse().unwrap();
-                        let ctrl_shift_print: Shortcut = "Ctrl+Shift+PrintScreen".parse().unwrap();
-                        let ctrl_print: Shortcut = "Ctrl+PrintScreen".parse().unwrap();
-                        let alt_print: Shortcut = "Alt+PrintScreen".parse().unwrap();
+                        let cfg = load_config();
+                        let action = shortcut_map(&cfg)
+                            .into_iter()
+                            .find(|(sc, _)| sc == shortcut)
+                            .map(|(_, action)| action);
 
-                        let mode = if shortcut == &ctrl_shift_print || shortcut == &ctrl_print {
-                            "region"
-                        } else if shortcut == &alt_print {
-                            "window"
-                        } else if shortcut == &print_screen {
-                            "fullscreen"
-                        } else {
-                            "fullscreen"
-                        };
-
-                        let app_handle = app.clone();
-                        let mode_str = mode.to_string();
-                        tauri::async_runtime::spawn(async move {
-                            let _ = capture_screen(app_handle, mode_str, 0).await;
-                        });
+                        if let Some(action) = action {
+                            match action {
+                                "open_main_window" => {
+                                    show_main_window(app);
+                                }
+                                "stop_recording" => {
+                                    let handle = app.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        let _ = stop_screen_recording(handle);
+                                    });
+                                }
+                                "upload_last_capture" => {
+                                    upload_last_capture(app);
+                                }
+                                "ocr_last_capture" => {
+                                    ocr_last_capture(app);
+                                }
+                                _ => {
+                                    let handle = app.clone();
+                                    let mode = action.to_string();
+                                    tauri::async_runtime::spawn(async move {
+                                        let _ = capture_screen(handle, mode, 0).await;
+                                    });
+                                }
+                            }
+                        }
                     }
                 })
                 .build(),
         )
         .setup(|app| {
-            // Register default global shortcuts for capture
-            let _ = app.global_shortcut().register("PrintScreen".parse::<Shortcut>().unwrap());
-            let _ = app.global_shortcut().register("Ctrl+Shift+PrintScreen".parse::<Shortcut>().unwrap());
-            let _ = app.global_shortcut().register("Ctrl+PrintScreen".parse::<Shortcut>().unwrap());
-            let _ = app.global_shortcut().register("Alt+PrintScreen".parse::<Shortcut>().unwrap());
+            apply_global_shortcuts(app.handle());
+
             let show_i = MenuItem::with_id(app, "show", "Open ShareL", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
@@ -299,10 +474,7 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(app);
                     }
                     "quit" => {
                         app.exit(0);
@@ -317,10 +489,7 @@ pub fn run() {
                     } = event
                     {
                         let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(app);
                     }
                 })
                 .build(app)?;

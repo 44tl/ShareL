@@ -39,7 +39,6 @@ pub fn generate_file_path(save_dir: &str, format: &str) -> PathBuf {
 }
 
 pub fn copy_image_to_clipboard(path: &Path) -> Result<(), String> {
-    // If running on Wayland (WAYLAND_DISPLAY is set), try wl-copy first for persistent clipboard across process exits
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         if let Ok(mut child) = std::process::Command::new("wl-copy")
             .arg("-t")
@@ -128,7 +127,6 @@ async fn capture_with_xdg_portal(interactive: bool, target_path: &Path) -> Resul
             }
         }
         Err(e) => {
-            // Portal error/absence fallback to grim/slurp if running Wayland
             if std::env::var("WAYLAND_DISPLAY").is_ok() {
                 if let Ok(()) = capture_with_grim_slurp(interactive, target_path).await {
                     return Ok(());
@@ -138,7 +136,6 @@ async fn capture_with_xdg_portal(interactive: bool, target_path: &Path) -> Resul
         }
     }
 
-    // Fallback if portal completed but produced invalid response
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         if let Ok(()) = capture_with_grim_slurp(interactive, target_path).await {
             return Ok(());

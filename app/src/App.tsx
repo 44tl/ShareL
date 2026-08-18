@@ -7,6 +7,7 @@ import { DestinationsManager } from './components/DestinationsManager';
 import { HistoryGallery } from './components/HistoryGallery';
 import { ToolsPanel } from './components/ToolsPanel';
 import { SettingsPanel } from './components/SettingsPanel';
+import { UploadNotifications } from './components/UploadNotifications';
 import {
   AppConfig,
   CaptureResult,
@@ -15,6 +16,10 @@ import {
   OcrResult,
   RecordingResult,
   RecordingStatus,
+  UploadJob,
+  UploadJobCompleteEvent,
+  UploadJobProgressEvent,
+  UploadJobStartEvent,
   UploadResult,
 } from './types';
 import { invokeCommand } from './lib/tauri';
@@ -34,6 +39,8 @@ export const App: React.FC = () => {
     duration_seconds: 0,
   });
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null);
+  const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
+  const uploadJobsRef = useRef<UploadJob[]>([]);
 
   const showToast = (text: string, type: 'info' | 'success' | 'error' = 'info') => {
     setToastMessage({ text, type });
@@ -50,7 +57,6 @@ export const App: React.FC = () => {
         setHistoryItems(history);
       }
     } catch {
-      // ignore transient refresh failures
     }
   }, []);
 
@@ -90,6 +96,87 @@ export const App: React.FC = () => {
       if (unlisten) unlisten();
     };
   }, [refreshHistory]);
+
+  useEffect(() => {
+    let unlisteners: (() => void)[] = [];
+    let mounted = true;
+
+    const updateJob = (jobId: string, patch: Partial<UploadJob>) => {
+      uploadJobsRef.current = uploadJobsRef.current.map((j) => (j.jobId === jobId ? { ...j, ...patch } : j));
+      if (mounted) setUploadJobs(uploadJobsRef.current);
+    };
+
+    const upsertJob = (job: UploadJob) => {
+      const exists = uploadJobsRef.current.some((j) => j.jobId === job.jobId);
+      uploadJobsRef.current = exists
+        ? uploadJobsRef.current.map((j) => (j.jobId === job.jobId ? { ...j, ...job } : j))
+        : [...uploadJobsRef.current, job];
+      if (mounted) setUploadJobs(uploadJobsRef.current);
+    };
+
+    import('@tauri-apps/api/event')
+      .then(async ({ listen }) => {
+        unlisteners.push(
+          await listen('upload://start', (e) => {
+            const p = e.payload as UploadJobStartEvent;
+            upsertJob({
+              jobId: p.job_id,
+              uploaderId: p.uploader_id,
+              uploaderName: p.uploader_name,
+              filePath: p.file_path,
+              fileName: p.file_name,
+              progress: 0,
+              bytesSent: 0,
+              bytesTotal: 0,
+              status: 'uploading',
+            });
+          })
+        );
+
+        unlisteners.push(
+          await listen('upload://progress', (e) => {
+            const p = e.payload as UploadJobProgressEvent;
+            updateJob(p.job_id, {
+              progress: p.progress,
+              bytesSent: p.bytes_sent,
+              bytesTotal: p.bytes_total,
+            });
+          })
+        );
+
+        unlisteners.push(
+          await listen('upload://complete', (e) => {
+            const p = e.payload as UploadJobCompleteEvent;
+            updateJob(p.job_id, {
+              progress: p.success ? 100 : 0,
+              status: p.success ? 'success' : 'error',
+              url: p.url,
+              deletionUrl: p.deletion_url,
+              error: p.error_message,
+              statusCode: p.status_code,
+              durationMs: p.duration_ms,
+            });
+          })
+        );
+
+        unlisteners.push(
+          await listen('ocr://result', (e) => {
+            const p = e.payload as { success: boolean; text?: string; error?: string };
+            if (p.success) {
+              showToast('OCR text copied to clipboard', 'success');
+            } else {
+              showToast(`OCR failed: ${p.error || 'No text recognized'}`, 'error');
+            }
+          })
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+      unlisteners.forEach((fn) => fn());
+    };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -154,10 +241,6 @@ export const App: React.FC = () => {
         setEditorFilePath(result.file_path);
         setActiveView('editor');
       }
-
-      if (config?.after_capture.upload_to_host && config.active_uploader_id) {
-        handleUploadFile(result.file_path);
-      }
     } catch (err) {
       showToast(`Capture failed: ${err}`, 'error');
     }
@@ -201,28 +284,38 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleUploadFile = async (filePath: string) => {
-    if (!config?.active_uploader_id) {
+  const handleUploadFile = async (filePath: string, uploaderId?: string) => {
+    const targetUploader = uploaderId || config?.active_uploader_id;
+    if (!targetUploader) {
       showToast('No active uploader destination configured', 'error');
       return;
     }
 
     try {
-      showToast('Uploading file to destination...', 'info');
       const res = await invokeCommand<UploadResult>('upload_file', {
-        uploaderId: config.active_uploader_id,
+        uploaderId: targetUploader,
         filePath,
       });
 
-      if (res.success && res.url) {
-        showToast(`Upload completed: ${res.url}`, 'success');
-        await refreshHistory();
-      } else {
+      if (!res.success) {
         showToast(`Upload failed: ${res.error_message || 'Unknown server error'}`, 'error');
+      } else if (res.url) {
+        await refreshHistory();
       }
     } catch (err) {
       showToast(`Upload error: ${err}`, 'error');
     }
+  };
+
+  const handleRetryUpload = (job: UploadJob) => {
+    uploadJobsRef.current = uploadJobsRef.current.filter((j) => j.jobId !== job.jobId);
+    setUploadJobs(uploadJobsRef.current);
+    handleUploadFile(job.filePath, job.uploaderId);
+  };
+
+  const handleDismissUpload = (jobId: string) => {
+    uploadJobsRef.current = uploadJobsRef.current.filter((j) => j.jobId !== jobId);
+    setUploadJobs(uploadJobsRef.current);
   };
 
   const handleSaveEditorImage = async (dataUrl: string, origPath?: string) => {
@@ -574,6 +667,13 @@ export const App: React.FC = () => {
               <span>{toastMessage.text}</span>
             </div>
           )}
+
+          <UploadNotifications
+            jobs={uploadJobs}
+            onCopyUrl={handleCopyText}
+            onRetry={handleRetryUpload}
+            onDismiss={handleDismissUpload}
+          />
         </main>
       </div>
     </div>

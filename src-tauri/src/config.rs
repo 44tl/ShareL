@@ -43,6 +43,33 @@ impl Default for AfterUploadTasks {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GlobalShortcuts {
+    pub capture_region: String,
+    pub capture_fullscreen: String,
+    pub capture_window: String,
+    pub capture_active_screen: String,
+    pub open_main_window: String,
+    pub stop_recording: String,
+    pub upload_last_capture: String,
+    pub ocr_last_capture: String,
+}
+
+impl Default for GlobalShortcuts {
+    fn default() -> Self {
+        Self {
+            capture_region: "Ctrl+Shift+PrintScreen".to_string(),
+            capture_fullscreen: "PrintScreen".to_string(),
+            capture_window: "Alt+PrintScreen".to_string(),
+            capture_active_screen: "Ctrl+PrintScreen".to_string(),
+            open_main_window: String::new(),
+            stop_recording: String::new(),
+            upload_last_capture: String::new(),
+            ocr_last_capture: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub save_directory: String,
     pub recordings_directory: String,
@@ -56,6 +83,8 @@ pub struct AppConfig {
     pub active_uploader_id: String,
     pub theme: String,
     pub minimize_to_tray: bool,
+    #[serde(default)]
+    pub shortcuts: GlobalShortcuts,
 }
 
 impl Default for AppConfig {
@@ -85,6 +114,7 @@ impl Default for AppConfig {
             active_uploader_id: "default_sxcu".to_string(),
             theme: "dark".to_string(),
             minimize_to_tray: true,
+            shortcuts: GlobalShortcuts::default(),
         }
     }
 }

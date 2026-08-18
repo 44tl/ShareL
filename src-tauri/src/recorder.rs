@@ -91,7 +91,7 @@ pub fn start_recording(
         final_path.to_string_lossy().to_string()
     };
 
-    let target_fps = if is_gif { fps.max(30).min(60) } else { fps.max(30).min(60) };
+    let target_fps = fps.clamp(30, 60);
 
     let has_gpu_recorder = Command::new("which")
         .arg("gpu-screen-recorder")

@@ -4,8 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::str::FromStr;
+use std::task::{Context, Poll};
 use std::time::Instant;
+use tokio::io::{AsyncRead, ReadBuf};
+use tokio_util::io::ReaderStream;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomUploaderConfig {
@@ -227,12 +231,10 @@ pub fn parse_pattern(
         })
         .to_string();
 
-    // Support standard ShareX regex syntax: $regex:pattern,group$ or $regex:pattern|group$ or $regex:group$
     let regex_re = regex::Regex::new(r"\$regex:([^$]+)\$").unwrap();
     result = regex_re
         .replace_all(&result, |caps: &regex::Captures| {
             let inner = &caps[1];
-            // Format can be "pattern,group" or "pattern|group" or "group"
             let (pat, group_idx) = if let Some(last_comma) = inner.rfind(',') {
                 let pat = &inner[..last_comma];
                 let group_str = &inner[last_comma + 1..];
@@ -261,9 +263,49 @@ pub fn parse_pattern(
     result
 }
 
-pub async fn execute_upload(
+struct ProgressReader<R> {
+    inner: R,
+    total: u64,
+    sent: u64,
+    on_progress: Box<dyn Fn(u64, u64) + Send + Sync>,
+}
+
+impl<R: AsyncRead + Unpin> AsyncRead for ProgressReader<R> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        let before = buf.filled().len();
+        let res = Pin::new(&mut self.inner).poll_read(cx, buf);
+        if res.is_ready() {
+            let after = buf.filled().len();
+            self.sent += (after - before) as u64;
+            (self.on_progress)(self.sent, self.total);
+        }
+        res
+    }
+}
+
+async fn build_progress_body(
+    file_path: &str,
+    on_progress: impl Fn(u64, u64) + Send + Sync + 'static,
+) -> Result<(reqwest::Body, u64), String> {
+    let file = tokio::fs::File::open(file_path).await.map_err(|e| e.to_string())?;
+    let total = file.metadata().await.map_err(|e| e.to_string())?.len();
+    let reader = ProgressReader {
+        inner: file,
+        total,
+        sent: 0,
+        on_progress: Box::new(on_progress),
+    };
+    Ok((reqwest::Body::wrap_stream(ReaderStream::new(reader)), total))
+}
+
+pub async fn execute_upload_with_progress(
     uploader: &CustomUploaderConfig,
     file_path: &str,
+    on_progress: impl Fn(u64, u64) + Send + Sync + 'static,
 ) -> Result<UploadResult, String> {
     let start_time = Instant::now();
     let path = Path::new(file_path);
@@ -271,7 +313,6 @@ pub async fn execute_upload(
         return Err(format!("File does not exist: {}", file_path));
     }
 
-    let file_bytes = fs::read(file_path).map_err(|e| e.to_string())?;
     let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
     let client = reqwest::Client::builder()
@@ -318,13 +359,16 @@ pub async fn execute_upload(
         for (k, v) in &uploader.arguments {
             form = form.text(k.clone(), v.clone());
         }
-        let part = Part::bytes(file_bytes)
+        let (body, total) = build_progress_body(file_path, on_progress).await?;
+        let part = Part::stream_with_length(body, total)
             .file_name(file_name.clone())
             .mime_str(mime_type)
             .map_err(|e| e.to_string())?;
         form = form.part(uploader.file_form_name.clone(), part);
         req = req.multipart(form);
     } else if uploader.body.eq_ignore_ascii_case("JSON") {
+        let file_bytes = tokio::fs::read(file_path).await.map_err(|e| e.to_string())?;
+        on_progress(file_bytes.len() as u64, file_bytes.len() as u64);
         let mut map = serde_json::Map::new();
         for (k, v) in &uploader.arguments {
             map.insert(k.clone(), serde_json::Value::String(v.clone()));
@@ -333,8 +377,11 @@ pub async fn execute_upload(
         map.insert(uploader.file_form_name.clone(), serde_json::Value::String(base64_str));
         req = req.json(&map);
     } else if uploader.body.eq_ignore_ascii_case("Binary") {
-        req = req.body(file_bytes);
+        let (body, _) = build_progress_body(file_path, on_progress).await?;
+        req = req.body(body);
     } else {
+        let file_bytes = tokio::fs::read(file_path).await.map_err(|e| e.to_string())?;
+        on_progress(file_bytes.len() as u64, file_bytes.len() as u64);
         let mut params = HashMap::new();
         for (k, v) in &uploader.arguments {
             params.insert(k.clone(), v.clone());
@@ -404,6 +451,13 @@ pub async fn execute_upload(
         status_code: status,
         duration_ms,
     })
+}
+
+pub async fn execute_upload(
+    uploader: &CustomUploaderConfig,
+    file_path: &str,
+) -> Result<UploadResult, String> {
+    execute_upload_with_progress(uploader, file_path, |_, _| {}).await
 }
 
 #[cfg(test)]

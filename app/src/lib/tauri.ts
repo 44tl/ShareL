@@ -37,6 +37,16 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
         active_uploader_id: 'sxcu_freeimage',
         theme: 'dark',
         minimize_to_tray: true,
+        shortcuts: {
+          capture_region: 'Ctrl+Shift+PrintScreen',
+          capture_fullscreen: 'PrintScreen',
+          capture_window: 'Alt+PrintScreen',
+          capture_active_screen: 'Ctrl+PrintScreen',
+          open_main_window: '',
+          stop_recording: '',
+          upload_last_capture: '',
+          ocr_last_capture: '',
+        },
       } as unknown as T);
 
     case 'update_app_config':

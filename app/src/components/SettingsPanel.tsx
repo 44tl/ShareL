@@ -4,8 +4,9 @@ import {
   Sliders,
   Bell,
   Cpu,
+  Keyboard,
 } from 'lucide-react';
-import { AppConfig } from '../types';
+import { AppConfig, GlobalShortcuts } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 
 interface SettingsPanelProps {
@@ -34,6 +35,28 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     };
     onUpdateConfig(updated);
   };
+
+  const handleShortcutChange = (key: keyof GlobalShortcuts, val: string) => {
+    const updated = {
+      ...config,
+      shortcuts: {
+        ...config.shortcuts,
+        [key]: val,
+      },
+    };
+    onUpdateConfig(updated);
+  };
+
+  const shortcutFields: { key: keyof GlobalShortcuts; label: string; placeholder: string }[] = [
+    { key: 'capture_region', label: 'Capture Region', placeholder: 'Ctrl+Shift+PrintScreen' },
+    { key: 'capture_fullscreen', label: 'Capture Fullscreen', placeholder: 'PrintScreen' },
+    { key: 'capture_window', label: 'Capture Window', placeholder: 'Alt+PrintScreen' },
+    { key: 'capture_active_screen', label: 'Capture Active Screen', placeholder: 'Ctrl+PrintScreen' },
+    { key: 'open_main_window', label: 'Open Main Window', placeholder: 'Ctrl+Shift+Space' },
+    { key: 'stop_recording', label: 'Stop Recording', placeholder: 'Ctrl+Shift+X' },
+    { key: 'upload_last_capture', label: 'Upload Last Capture', placeholder: 'Ctrl+Shift+U' },
+    { key: 'ocr_last_capture', label: 'OCR Last Capture', placeholder: 'Ctrl+Shift+O' },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '28px', gap: '24px', maxWidth: '780px', backgroundColor: 'var(--md-sys-color-background)' }}>
@@ -246,6 +269,46 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <span>Show desktop system notification upon successful upload</span>
           </label>
         </div>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: 'var(--md-sys-color-surface-container)',
+          border: '1px solid var(--md-sys-color-outline-variant)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Keyboard size={18} color="var(--md-sys-color-primary)" />
+          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+            Global Keyboard Shortcuts
+          </h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {shortcutFields.map((f) => (
+            <div key={f.key}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+                {f.label}
+              </label>
+              <input
+                type="text"
+                value={config.shortcuts[f.key]}
+                onChange={(e) => handleShortcutChange(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                style={{ width: '100%', fontFamily: 'Roboto Mono' }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <span style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)' }}>
+          Shortcuts are registered system-wide. Format: Ctrl+Shift+PrintScreen, Alt+P, etc. Leave empty to disable an action.
+        </span>
       </div>
 
       <div

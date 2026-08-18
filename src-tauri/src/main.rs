@@ -163,11 +163,9 @@ async fn run_cli(args: Vec<String>) {
                             i += 1;
                         }
                     }
-                    "--uploader" => {
-                        if i + 1 < args.len() {
-                            custom_uploader_id = Some(args[i + 1].clone());
-                            i += 1;
-                        }
+                    "--uploader" if i + 1 < args.len() => {
+                        custom_uploader_id = Some(args[i + 1].clone());
+                        i += 1;
                     }
                     _ => {}
                 }
@@ -222,7 +220,7 @@ async fn run_cli(args: Vec<String>) {
                 }
             }
         }
-        "gui" | _ => {
+        _ => {
             init_gui_env();
             sharel_lib::run();
         }
