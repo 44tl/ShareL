@@ -492,6 +492,24 @@ export const DestinationsManager: React.FC<DestinationsManagerProps> = ({
               </div>
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '4px' }}>
+                  Custom Domain Mapping
+                </label>
+                <input
+                  type="text"
+                  value={selectedUploader.Domain ?? ''}
+                  onChange={(e) => handleUpdateField('Domain', e.target.value || undefined)}
+                  placeholder="e.g. cdn.example.com"
+                  style={{ width: '100%' }}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--md-sys-color-on-surface-muted)', marginTop: '4px' }}>
+                  When set, the host of every parsed response URL (URL, ThumbnailURL, DeletionURL) is rewritten to this domain. Useful for routing uploads through a personal CDN or mirror.
+                </div>
+              </div>
+            </div>
+
             <div
               style={{
                 backgroundColor: 'var(--md-sys-color-surface-container)',

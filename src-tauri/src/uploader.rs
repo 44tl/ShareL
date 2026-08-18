@@ -56,6 +56,8 @@ pub struct CustomUploaderConfig {
     pub deletion_url_pattern: Option<String>,
     #[serde(rename = "ErrorMessage", default)]
     pub error_message_pattern: Option<String>,
+    #[serde(rename = "Domain", default)]
+    pub custom_domain: Option<String>,
 }
 
 fn default_destination_type() -> String {
@@ -138,6 +140,7 @@ pub fn list_custom_uploaders() -> Vec<CustomUploaderConfig> {
             thumbnail_url_pattern: None,
             deletion_url_pattern: None,
             error_message_pattern: None,
+            custom_domain: None,
         };
 
         let litterbox_uploader = CustomUploaderConfig {
@@ -162,6 +165,7 @@ pub fn list_custom_uploaders() -> Vec<CustomUploaderConfig> {
             thumbnail_url_pattern: None,
             deletion_url_pattern: None,
             error_message_pattern: None,
+            custom_domain: None,
         };
 
         save_custom_uploader(&default_uploader).ok();
@@ -308,6 +312,45 @@ pub fn parse_pattern(
         .to_string();
 
     result
+}
+
+pub fn apply_custom_domain(url: Option<String>, custom_domain: Option<&str>) -> Option<String> {
+    let Some(url) = url else {
+        return None;
+    };
+    let Some(domain) = custom_domain else {
+        return Some(url);
+    };
+    let trimmed = domain.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Some(url);
+    }
+
+    if let Ok(parsed) = reqwest::Url::parse(&url) {
+        if parsed.scheme().starts_with("http") {
+            let mut host = match parsed.host_str() {
+                Some(h) => h.to_string(),
+                None => return Some(url),
+            };
+            if let Some(port) = parsed.port() {
+                host.push_str(&format!(":{}", port));
+            }
+            if host == trimmed {
+                return Some(url);
+            }
+            let mut mapped = parsed.clone();
+            mapped.set_host(Some(trimmed)).ok();
+            return Some(mapped.as_str().to_string());
+        }
+    }
+
+    if let Some(stripped) = url.strip_prefix("https://") {
+        return Some(format!("https://{}{}", trimmed, stripped));
+    }
+    if let Some(stripped) = url.strip_prefix("http://") {
+        return Some(format!("http://{}{}", trimmed, stripped));
+    }
+    Some(url)
 }
 
 struct ProgressReader<R> {
@@ -490,9 +533,9 @@ pub async fn execute_upload_with_progress(
 
     Ok(UploadResult {
         success: status < 400 && extracted_error.is_none(),
-        url: extracted_url,
-        thumbnail_url: extracted_thumbnail,
-        deletion_url: extracted_deletion,
+        url: apply_custom_domain(extracted_url, uploader.custom_domain.as_deref()),
+        thumbnail_url: apply_custom_domain(extracted_thumbnail, uploader.custom_domain.as_deref()),
+        deletion_url: apply_custom_domain(extracted_deletion, uploader.custom_domain.as_deref()),
         error_message: extracted_error,
         raw_response: raw_text,
         status_code: status,
@@ -522,5 +565,37 @@ mod tests {
         let full_match_pattern = "$regex:https://example.com/view/([a-zA-Z0-9]+),0$";
         let full_parsed = parse_pattern(full_match_pattern, raw, None, "test.png", &headers);
         assert_eq!(full_parsed, "https://example.com/view/abcd123");
+    }
+
+    #[test]
+    fn test_apply_custom_domain_rewrites_host() {
+        let mapped = apply_custom_domain(
+            Some("https://example.com/view/abcd123".to_string()),
+            Some("cdn.example.com"),
+        );
+        assert_eq!(mapped.as_deref(), Some("https://cdn.example.com/view/abcd123"));
+    }
+
+    #[test]
+    fn test_apply_custom_domain_preserves_when_disabled() {
+        let original = Some("https://example.com/view/abcd123".to_string());
+        let mapped = apply_custom_domain(original.clone(), None);
+        assert_eq!(mapped, original);
+    }
+
+    #[test]
+    fn test_apply_custom_domain_strips_trailing_sllash() {
+        let mapped = apply_custom_domain(
+            Some("https://example.com/view/abcd123".to_string()),
+            Some("cdn.example.com/"),
+        );
+        assert_eq!(mapped.as_deref(), Some("https://cdn.example.com/view/abcd123"));
+    }
+
+    #[test]
+    fn test_apply_custom_domain_passthrough_non_http() {
+        let original = Some("file:///tmp/image.png".to_string());
+        let mapped = apply_custom_domain(original.clone(), Some("cdn.example.com"));
+        assert_eq!(mapped, original);
     }
 }

@@ -87,6 +87,8 @@ The installer accepts the following options:
 * **Response Parsing**: Extract URLs using JSONPath (`$json:path.to.key$`),
   regular expressions (`$regex:pattern,group$`), and response headers
   (`$header:Location$`).
+* **Custom Domain Mapping**: Rewrite the host of every parsed response URL
+  (URL, ThumbnailURL, DeletionURL) to a personal domain or CDN prefix.
 * **Test Sandbox**: Built-in test inspector displaying HTTP status codes,
   latency, and raw response bodies.
 

@@ -170,6 +170,7 @@ export interface CustomUploaderConfig {
   ThumbnailURL?: string;
   DeletionURL?: string;
   ErrorMessage?: string;
+  Domain?: string;
 }
 
 export interface UploadResult {

@@ -40,8 +40,8 @@ session.
 * Do not submit commented-out code, debug `println!` statements, or dead
   scaffolding.
 * This policy applies to code comments only. Markdown documentation
-  (`README.md`, `SECURITY.md`, this file) is exempt, but keep it free of
-  em-dashes and consistent in structure.
+  (`README.md`, `SECURITY.md`, this file) is exempt, but keep it well
+  structured and consistent in tone.
 
 ### 2. No AI Slop
 
