@@ -9,8 +9,9 @@ import {
   UploadCloud,
   CheckCircle2,
   FolderOpen,
+  Layers,
 } from 'lucide-react';
-import { CaptureResult, RecordingResult } from '../types';
+import { CaptureResult, RecordingResult, SystemEnvironmentInfo } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 
 interface CaptureCenterProps {
@@ -21,6 +22,7 @@ interface CaptureCenterProps {
   lastRecording: RecordingResult | null;
   onCopyPath: (path: string) => void;
   onShowInFolder: (path: string) => void;
+  environment?: SystemEnvironmentInfo | null;
 }
 
 export const CaptureCenter: React.FC<CaptureCenterProps> = ({
@@ -30,6 +32,7 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
   lastCapture,
   lastRecording,
   onShowInFolder,
+  environment,
 }) => {
   const [delaySeconds, setDelaySeconds] = useState<number>(0);
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
@@ -82,12 +85,35 @@ export const CaptureCenter: React.FC<CaptureCenterProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
         }}
       >
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)', marginBottom: '4px' }}>
-            Capture Hub
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--md-sys-color-on-surface)' }}>
+              Capture Hub
+            </h1>
+            {environment && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '3px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                  color: 'var(--md-sys-color-primary)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <Layers size={12} />
+                <span>{environment.compositor_name}</span>
+              </span>
+            )}
+          </div>
           <p style={{ fontSize: '13px', color: 'var(--md-sys-color-on-surface-variant)' }}>
             High-performance Wayland screen capture and media workflow automation.
           </p>

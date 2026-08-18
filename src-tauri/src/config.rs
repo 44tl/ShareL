@@ -83,8 +83,16 @@ pub struct AppConfig {
     pub active_uploader_id: String,
     pub theme: String,
     pub minimize_to_tray: bool,
+    #[serde(default = "default_backend_auto")]
+    pub preferred_screenshot_backend: String,
+    #[serde(default = "default_backend_auto")]
+    pub preferred_recording_backend: String,
     #[serde(default)]
     pub shortcuts: GlobalShortcuts,
+}
+
+fn default_backend_auto() -> String {
+    "auto".to_string()
 }
 
 impl Default for AppConfig {
@@ -114,6 +122,8 @@ impl Default for AppConfig {
             active_uploader_id: "default_sxcu".to_string(),
             theme: "dark".to_string(),
             minimize_to_tray: true,
+            preferred_screenshot_backend: "auto".to_string(),
+            preferred_recording_backend: "auto".to_string(),
             shortcuts: GlobalShortcuts::default(),
         }
     }

@@ -1,7 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use sharel_lib::capture::{copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot, CaptureMode};
+use sharel_lib::capture::{
+    copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot_with_backend, CaptureMode,
+};
 use sharel_lib::config::load_config;
+use sharel_lib::environment::get_system_environment_info;
 use sharel_lib::history::{add_history_item, HistoryItem};
 use sharel_lib::tools::extract_text_ocr;
 use sharel_lib::uploader::{execute_upload, list_custom_uploaders};
@@ -18,17 +21,20 @@ fn print_help() {
     println!("  upload, -u [FILE]         Upload a file to the active or specified destination");
     println!("  ocr [FILE]                Extract text from an image using OCR");
     println!("  uploaders, -l             List all configured ShareX upload destinations");
+    println!("  info, doctor              Display detected Wayland compositor and capture backends");
     println!("  help, -h, --help          Print this help message\n");
     println!("CAPTURE OPTIONS:");
     println!("  --upload, -u              Upload capture immediately after taking it");
     println!("  --copy, -p                Copy capture image to clipboard (default: enabled in config)");
     println!("  --delay, -d [SECONDS]     Delay capture by specified seconds (e.g. -d 2)");
     println!("  --format, -f [FORMAT]     Image format: png, jpg, webp (default: png)");
+    println!("  --backend, -b [BACKEND]   Override backend: auto, grim_slurp, xdg_desktop_portal, compositor");
     println!("  --uploader [ID]           Specific destination ID to upload to\n");
     println!("EXAMPLES:");
     println!("  sharel capture region");
     println!("  sharel capture fullscreen --upload");
     println!("  sharel capture region -d 3 -u");
+    println!("  sharel info");
     println!("  sharel upload ~/Pictures/photo.png");
     println!("  sharel ocr ~/Pictures/receipt.png");
 }
@@ -61,6 +67,32 @@ async fn run_cli(args: Vec<String>) {
     match command {
         "help" | "-h" | "--help" => {
             print_help();
+        }
+        "info" | "doctor" | "env" => {
+            let cfg = load_config();
+            let env_info = get_system_environment_info(
+                Some(&cfg.preferred_screenshot_backend),
+                Some(&cfg.preferred_recording_backend),
+            );
+            println!("=== ShareL Environment & Backend Diagnostics ===");
+            println!("  Compositor:         {}", env_info.compositor_name);
+            println!("  Session Type:       {}", env_info.session_type);
+            println!("  Wayland Display:    {}", env_info.wayland_display.unwrap_or_else(|| "None".to_string()));
+            println!("\n  Available Backends:");
+            println!("    ├── XDG Desktop Portal:      {}", if env_info.backends.xdg_desktop_portal { "✓ Yes" } else { "✗ No" });
+            println!("    ├── grim:                    {}", if env_info.backends.grim { "✓ Yes" } else { "✗ No" });
+            println!("    ├── slurp:                   {}", if env_info.backends.slurp { "✓ Yes" } else { "✗ No" });
+            println!("    ├── gpu-screen-recorder:     {}", if env_info.backends.gpu_screen_recorder { "✓ Yes" } else { "✗ No" });
+            println!("    ├── wf-recorder:             {}", if env_info.backends.wf_recorder { "✓ Yes" } else { "✗ No" });
+            println!("    ├── ffmpeg:                  {}", if env_info.backends.ffmpeg { "✓ Yes" } else { "✗ No" });
+            println!("    └── Compositor Integration:  {} ({})", 
+                if env_info.backends.compositor_integration { "✓ Yes" } else { "✗ No" },
+                env_info.backends.compositor_cli_name.unwrap_or_else(|| "none".to_string())
+            );
+            println!("\n  Active Preferences:");
+            println!("    • Screenshot Backend: {}", env_info.preferred_screenshot_backend);
+            println!("    • Recording Backend:  {}", env_info.preferred_recording_backend);
+            println!("================================================");
         }
         "uploaders" | "-l" | "--list" => {
             let uploaders = list_custom_uploaders();
@@ -143,6 +175,7 @@ async fn run_cli(args: Vec<String>) {
             let mut delay_ms: u64 = 0;
             let mut do_upload = false;
             let mut custom_format: Option<String> = None;
+            let mut custom_backend: Option<String> = None;
             let mut custom_uploader_id: Option<String> = None;
 
             let mut i = 3;
@@ -163,6 +196,12 @@ async fn run_cli(args: Vec<String>) {
                             i += 1;
                         }
                     }
+                    "--backend" | "-b" => {
+                        if i + 1 < args.len() {
+                            custom_backend = Some(args[i + 1].clone());
+                            i += 1;
+                        }
+                    }
                     "--uploader" if i + 1 < args.len() => {
                         custom_uploader_id = Some(args[i + 1].clone());
                         i += 1;
@@ -174,11 +213,12 @@ async fn run_cli(args: Vec<String>) {
 
             let cfg = load_config();
             let format = custom_format.unwrap_or(cfg.default_image_format.clone());
+            let backend_pref = custom_backend.as_deref().or(Some(&cfg.preferred_screenshot_backend));
 
             println!("Capturing {:?} on Wayland...", mode);
-            match take_screenshot(mode, &cfg.save_directory, &format, delay_ms).await {
+            match take_screenshot_with_backend(mode, &cfg.save_directory, &format, delay_ms, backend_pref).await {
                 Ok(result) => {
-                    println!("Screenshot saved: {}", result.file_path);
+                    println!("Screenshot saved (via {}): {}", result.backend_used, result.file_path);
                     let _ = copy_image_to_clipboard(Path::new(&result.file_path));
 
                     let history_item = HistoryItem {

@@ -288,7 +288,8 @@ nav {
   transition: all 0.12s ease;
 }
 
-.tool-btn.active, .tool-btn:hover {
+.tool-btn.active,
+.tool-btn:hover {
   background: var(--primary-container);
   color: var(--on-primary-container);
 }
@@ -389,7 +390,8 @@ canvas#interactiveCanvas {
   background: var(--bg-surface);
 }
 
-.comparison-table th, .comparison-table td {
+.comparison-table th,
+.comparison-table td {
   padding: 14px 18px;
   text-align: left;
   border-bottom: 1px solid var(--border);
@@ -429,17 +431,21 @@ footer {
   .hero {
     padding: 40px 0 24px;
   }
+
   .hero h1 {
     font-size: 28px;
     line-height: 1.25;
   }
+
   .hero-desc {
     font-size: 14px;
     margin-bottom: 24px;
   }
+
   .nav-links {
     display: none;
   }
+
   .command-box {
     flex-direction: column;
     align-items: stretch;
@@ -447,20 +453,25 @@ footer {
     border-radius: var(--radius-md);
     padding: 12px;
   }
+
   .command-box span {
     white-space: normal;
     word-break: break-all;
     font-size: 11.5px;
   }
+
   .canvas-container {
     height: 260px;
   }
+
   .section-title h2 {
     font-size: 24px;
   }
+
   .section-title p {
     font-size: 13.5px;
   }
+
   .features-grid {
     grid-template-columns: 1fr;
   }

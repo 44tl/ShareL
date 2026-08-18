@@ -1,3 +1,4 @@
+use crate::environment::{detect_backends, detect_compositor, CompositorKind};
 use arboard::Clipboard;
 use ashpd::desktop::screenshot::Screenshot;
 use chrono::Local;
@@ -5,6 +6,7 @@ use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CaptureMode {
@@ -25,6 +27,7 @@ pub struct CaptureResult {
     pub timestamp: i64,
     pub data_url: String,
     pub format: String,
+    pub backend_used: String,
 }
 
 pub fn generate_file_path(save_dir: &str, format: &str) -> PathBuf {
@@ -40,7 +43,7 @@ pub fn generate_file_path(save_dir: &str, format: &str) -> PathBuf {
 
 pub fn copy_image_to_clipboard(path: &Path) -> Result<(), String> {
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        if let Ok(mut child) = std::process::Command::new("wl-copy")
+        if let Ok(mut child) = Command::new("wl-copy")
             .arg("-t")
             .arg("image/png")
             .stdin(std::process::Stdio::piped())
@@ -78,25 +81,108 @@ pub fn copy_text_to_clipboard(text: &str) -> Result<(), String> {
     clipboard.set_text(text).map_err(|e| e.to_string())
 }
 
-async fn capture_with_grim_slurp(interactive: bool, target_path: &Path) -> Result<(), String> {
+async fn capture_with_grim_slurp(mode: &CaptureMode, target_path: &Path) -> Result<(), String> {
     if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent).ok();
     }
 
-    let mut cmd = std::process::Command::new("grim");
-    if interactive {
-        let slurp_out = std::process::Command::new("slurp")
-            .output()
-            .map_err(|e| format!("Failed to execute slurp: {}", e))?;
-        if !slurp_out.status.success() {
-            return Err("Region selection cancelled via slurp".to_string());
+    let mut cmd = Command::new("grim");
+    match mode {
+        CaptureMode::Region => {
+            let slurp_out = Command::new("slurp")
+                .output()
+                .map_err(|e| format!("Failed to execute slurp: {}", e))?;
+            if !slurp_out.status.success() {
+                return Err("Region selection cancelled via slurp".to_string());
+            }
+            let region = String::from_utf8_lossy(&slurp_out.stdout).trim().to_string();
+            if region.is_empty() {
+                return Err("Empty region selected".to_string());
+            }
+            cmd.arg("-g").arg(region);
         }
-        let region = String::from_utf8_lossy(&slurp_out.stdout).trim().to_string();
-        if region.is_empty() {
-            return Err("Empty region selected".to_string());
+        CaptureMode::Window => {
+            // Check if compositor CLI can assist in window geometry
+            let (compositor, _) = detect_compositor();
+            let mut region_found = false;
+
+            if compositor == CompositorKind::Hyprland {
+                if let Ok(out) = Command::new("hyprctl").args(["activewindow", "-j"]).output() {
+                    if out.status.success() {
+                        if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                            if let (Some(at), Some(size)) = (val.get("at"), val.get("size")) {
+                                if let (Some(x), Some(y), Some(w), Some(h)) = (
+                                    at.get(0).and_then(|v| v.as_i64()),
+                                    at.get(1).and_then(|v| v.as_i64()),
+                                    size.get(0).and_then(|v| v.as_i64()),
+                                    size.get(1).and_then(|v| v.as_i64()),
+                                ) {
+                                    cmd.arg("-g").arg(format!("{},{} {}x{}", x, y, w, h));
+                                    region_found = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if compositor == CompositorKind::Sway {
+                if let Ok(out) = Command::new("swaymsg").args(["-t", "get_tree"]).output() {
+                    if out.status.success() {
+                        if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                            fn find_focused(node: &serde_json::Value) -> Option<&serde_json::Value> {
+                                if node.get("focused").and_then(|v| v.as_bool()).unwrap_or(false) {
+                                    return Some(node);
+                                }
+                                if let Some(nodes) = node.get("nodes").and_then(|v| v.as_array()) {
+                                    for n in nodes {
+                                        if let Some(f) = find_focused(n) {
+                                            return Some(f);
+                                        }
+                                    }
+                                }
+                                if let Some(floating) = node.get("floating_nodes").and_then(|v| v.as_array()) {
+                                    for n in floating {
+                                        if let Some(f) = find_focused(n) {
+                                            return Some(f);
+                                        }
+                                    }
+                                }
+                                None
+                            }
+                            if let Some(focused) = find_focused(&val) {
+                                if let Some(rect) = focused.get("rect") {
+                                    let x = rect.get("x").and_then(|v| v.as_i64()).unwrap_or(0);
+                                    let y = rect.get("y").and_then(|v| v.as_i64()).unwrap_or(0);
+                                    let w = rect.get("width").and_then(|v| v.as_i64()).unwrap_or(0);
+                                    let h = rect.get("height").and_then(|v| v.as_i64()).unwrap_or(0);
+                                    if w > 0 && h > 0 {
+                                        cmd.arg("-g").arg(format!("{},{} {}x{}", x, y, w, h));
+                                        region_found = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !region_found {
+                // Interactive window selection with slurp borders
+                let slurp_out = Command::new("slurp")
+                    .output()
+                    .map_err(|e| format!("Failed to execute slurp for window select: {}", e))?;
+                if !slurp_out.status.success() {
+                    return Err("Window selection cancelled via slurp".to_string());
+                }
+                let region = String::from_utf8_lossy(&slurp_out.stdout).trim().to_string();
+                if region.is_empty() {
+                    return Err("Empty window region selected".to_string());
+                }
+                cmd.arg("-g").arg(region);
+            }
         }
-        cmd.arg("-g").arg(region);
+        CaptureMode::ActiveScreen | CaptureMode::Fullscreen => {}
     }
+
     cmd.arg(target_path);
 
     let status = cmd.status().map_err(|e| format!("Failed to execute grim: {}", e))?;
@@ -125,31 +211,47 @@ async fn capture_with_xdg_portal(interactive: bool, target_path: &Path) -> Resul
                     }
                 }
             }
+            Err("XDG Portal succeeded but screenshot temp file could not be read".to_string())
         }
-        Err(e) => {
-            if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                if let Ok(()) = capture_with_grim_slurp(interactive, target_path).await {
-                    return Ok(());
-                }
-            }
-            return Err(format!("XDG Desktop Portal screenshot error: {}", e));
-        }
+        Err(e) => Err(format!("XDG Desktop Portal screenshot error: {}", e)),
     }
-
-    if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        if let Ok(()) = capture_with_grim_slurp(interactive, target_path).await {
-            return Ok(());
-        }
-    }
-
-    Err("Screenshot capture failed via Portal and fallback tools".to_string())
 }
 
-pub async fn take_screenshot(
+async fn capture_with_compositor_native(
+    compositor: &CompositorKind,
+    mode: &CaptureMode,
+    _target_path: &Path,
+) -> Result<(), String> {
+    match compositor {
+        CompositorKind::Niri => {
+            // Niri provides native actions: screenshot, screenshot-screen, screenshot-window
+            // We can invoke niri msg action screenshot or leverage grim+slurp
+            let action = match mode {
+                CaptureMode::Region => "screenshot",
+                CaptureMode::Window => "screenshot-window",
+                CaptureMode::Fullscreen | CaptureMode::ActiveScreen => "screenshot-screen",
+            };
+
+            let out = Command::new("niri")
+                .args(["msg", "action", action])
+                .output()
+                .map_err(|e| format!("Failed to invoke niri msg: {}", e))?;
+
+            if out.status.success() {
+                return Ok(());
+            }
+            Err("Niri screenshot action returned error".to_string())
+        }
+        _ => Err("Compositor native integration not available for this compositor".to_string()),
+    }
+}
+
+pub async fn take_screenshot_with_backend(
     mode: CaptureMode,
     save_dir: &str,
     format: &str,
     delay_ms: u64,
+    preferred_backend: Option<&str>,
 ) -> Result<CaptureResult, String> {
     if delay_ms > 0 {
         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
@@ -158,10 +260,55 @@ pub async fn take_screenshot(
     let target_path = generate_file_path(save_dir, format);
     let interactive = matches!(mode, CaptureMode::Region | CaptureMode::Window);
 
-    capture_with_xdg_portal(interactive, &target_path).await?;
+    let (compositor, _) = detect_compositor();
+    let backends = detect_backends(&compositor);
 
-    if !target_path.exists() {
-        return Err("Screenshot file was not created".to_string());
+    let pref = preferred_backend.unwrap_or("auto");
+    let mut used_backend = "unknown".to_string();
+    let mut captured = false;
+
+    // Strategy 1: If user prefers grim/slurp or on wlroots/Niri/Hyprland/Sway with grim+slurp available
+    if (pref == "grim_slurp" || pref == "auto") && backends.grim && (backends.slurp || !interactive) {
+        if let Ok(()) = capture_with_grim_slurp(&mode, &target_path).await {
+            used_backend = "grim/slurp".to_string();
+            captured = true;
+        }
+    }
+
+    // Strategy 2: If user prefers XDG Portal or grim/slurp failed
+    if !captured && (pref == "xdg_desktop_portal" || pref == "auto") && backends.xdg_desktop_portal {
+        if let Ok(()) = capture_with_xdg_portal(interactive, &target_path).await {
+            used_backend = "xdg-desktop-portal".to_string();
+            captured = true;
+        }
+    }
+
+    // Strategy 3: Native compositor action fallback (e.g. Niri)
+    if !captured && (pref == "compositor" || pref == "auto") && backends.compositor_integration {
+        if let Ok(()) = capture_with_compositor_native(&compositor, &mode, &target_path).await {
+            used_backend = format!("{}-native", backends.compositor_cli_name.unwrap_or_else(|| "compositor".to_string()));
+            captured = true;
+        }
+    }
+
+    // Final fallback: try grim/slurp unconditionally if Wayland is active
+    if !captured && std::env::var("WAYLAND_DISPLAY").is_ok() && backends.grim {
+        if let Ok(()) = capture_with_grim_slurp(&mode, &target_path).await {
+            used_backend = "grim/slurp".to_string();
+            captured = true;
+        }
+    }
+
+    // Final fallback: try XDG Desktop Portal unconditionally
+    if !captured {
+        if let Ok(()) = capture_with_xdg_portal(interactive, &target_path).await {
+            used_backend = "xdg-desktop-portal".to_string();
+            captured = true;
+        }
+    }
+
+    if !captured || !target_path.exists() {
+        return Err("Screenshot capture failed across all backends (XDG Portal, grim/slurp, and compositor native)".to_string());
     }
 
     let img = image::open(&target_path).map_err(|e| format!("Failed to read captured image: {}", e))?;
@@ -191,5 +338,15 @@ pub async fn take_screenshot(
         timestamp: Local::now().timestamp(),
         data_url,
         format: format.to_string(),
+        backend_used: used_backend,
     })
+}
+
+pub async fn take_screenshot(
+    mode: CaptureMode,
+    save_dir: &str,
+    format: &str,
+    delay_ms: u64,
+) -> Result<CaptureResult, String> {
+    take_screenshot_with_backend(mode, save_dir, format, delay_ms, None).await
 }

@@ -5,17 +5,22 @@ import {
   Bell,
   Cpu,
   Keyboard,
+  Layers,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
-import { AppConfig, GlobalShortcuts } from '../types';
+import { AppConfig, GlobalShortcuts, SystemEnvironmentInfo } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 
 interface SettingsPanelProps {
   config: AppConfig | null;
+  environment?: SystemEnvironmentInfo | null;
   onUpdateConfig: (newConfig: AppConfig) => Promise<void>;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   config,
+  environment,
   onUpdateConfig,
 }) => {
   if (!config) return null;
@@ -65,8 +70,137 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           Settings
         </h1>
         <p style={{ fontSize: '12px', color: 'var(--md-sys-color-on-surface-muted)' }}>
-          Configure file storage, naming templates, capture workflows, and encoding parameters.
+          Configure Wayland compositors, capture backends, storage paths, and global shortcuts.
         </p>
+      </div>
+
+      {/* Wayland Compositor & Backend Architecture Card */}
+      <div
+        style={{
+          backgroundColor: 'var(--md-sys-color-surface-container)',
+          border: '1px solid var(--md-sys-color-outline-variant)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Layers size={18} color="var(--md-sys-color-primary)" />
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+              Wayland Compositor &amp; Backend Architecture
+            </h2>
+          </div>
+
+          <span
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-pill)',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              color: 'var(--md-sys-color-primary)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {environment?.compositor_name || 'Detecting Compositor...'}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+          {[
+            {
+              name: 'XDG Desktop Portal',
+              desc: 'ashpd screenshot & screencast API',
+              available: environment?.backends.xdg_desktop_portal ?? true,
+            },
+            {
+              name: 'grim / slurp',
+              desc: 'Direct Wayland screencopy & selection',
+              available: (environment?.backends.grim && environment?.backends.slurp) ?? false,
+            },
+            {
+              name: 'gpu-screen-recorder',
+              desc: 'Hardware accelerated (NVENC / VAAPI)',
+              available: environment?.backends.gpu_screen_recorder ?? false,
+            },
+            {
+              name: 'wf-recorder',
+              desc: 'Wayland wlroots / Niri screencopy recorder',
+              available: environment?.backends.wf_recorder ?? false,
+            },
+            {
+              name: 'Compositor Integration',
+              desc: environment?.backends.compositor_cli_name ? `Native CLI (${environment.backends.compositor_cli_name})` : 'Compositor-specific IPC',
+              available: environment?.backends.compositor_integration ?? false,
+            },
+          ].map((b) => (
+            <div
+              key={b.name}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--md-sys-color-surface-container-high)',
+                border: '1px solid var(--md-sys-color-outline-variant)',
+              }}
+            >
+              {b.available ? (
+                <CheckCircle2 size={16} color="var(--md-sys-color-success)" style={{ marginTop: '2px', flexShrink: 0 }} />
+              ) : (
+                <XCircle size={16} color="var(--md-sys-color-on-surface-muted)" style={{ marginTop: '2px', flexShrink: 0 }} />
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+                  {b.name}
+                </span>
+                <span style={{ fontSize: '10.5px', color: 'var(--md-sys-color-on-surface-muted)' }}>
+                  {b.desc}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '4px' }}>
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
+              Preferred Screenshot Backend
+            </label>
+            <CustomDropdown
+              value={config.preferred_screenshot_backend || 'auto'}
+              onChange={(val) => handleChange('preferred_screenshot_backend', val)}
+              options={[
+                { value: 'auto', label: 'Auto (Intelligent Wayland Router)' },
+                { value: 'grim_slurp', label: 'grim / slurp (Fast & Direct)' },
+                { value: 'xdg_desktop_portal', label: 'XDG Desktop Portal' },
+                { value: 'compositor', label: 'Compositor Native (Niri/Hyprland)' },
+              ]}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)', display: 'block', marginBottom: '6px' }}>
+              Preferred Recording Backend
+            </label>
+            <CustomDropdown
+              value={config.preferred_recording_backend || 'auto'}
+              onChange={(val) => handleChange('preferred_recording_backend', val)}
+              options={[
+                { value: 'auto', label: 'Auto (Hardware Acceleration First)' },
+                { value: 'gpu-screen-recorder', label: 'gpu-screen-recorder (NVENC/VAAPI)' },
+                { value: 'wf-recorder', label: 'wf-recorder (Wayland Screencopy)' },
+                { value: 'ffmpeg', label: 'ffmpeg (Software Grabber)' },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       <div
@@ -325,10 +459,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <Cpu size={20} color="var(--md-sys-color-success)" />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
-            Linux Desktop Environment
+            {environment?.compositor_name || 'Wayland Environment'}
           </span>
           <span style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)' }}>
-            Wayland session with native XDG Desktop Portal integration.
+            Session: {environment?.session_type.toUpperCase() || 'WAYLAND'} • Wayland Display: {environment?.wayland_display || ':0'} • First-class Niri, Hyprland, Sway &amp; COSMIC support.
           </span>
         </div>
       </div>

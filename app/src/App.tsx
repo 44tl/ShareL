@@ -16,6 +16,7 @@ import {
   OcrResult,
   RecordingResult,
   RecordingStatus,
+  SystemEnvironmentInfo,
   UploadJob,
   UploadJobCompleteEvent,
   UploadJobProgressEvent,
@@ -27,6 +28,7 @@ import { invokeCommand } from './lib/tauri';
 export const App: React.FC = () => {
   const [activeView, setActiveView] = useState<string>('capture');
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [systemEnvironment, setSystemEnvironment] = useState<SystemEnvironmentInfo | null>(null);
   const [uploaders, setUploaders] = useState<CustomUploaderConfig[]>([]);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const historyRef = useRef<HistoryItem[]>([]);
@@ -64,6 +66,9 @@ export const App: React.FC = () => {
     try {
       const cfg = await invokeCommand<AppConfig>('get_app_config');
       setConfig(cfg);
+
+      const envInfo = await invokeCommand<SystemEnvironmentInfo>('get_system_environment');
+      setSystemEnvironment(envInfo);
 
       const uploaderList = await invokeCommand<CustomUploaderConfig[]>('list_uploaders');
       setUploaders(uploaderList);
@@ -571,6 +576,7 @@ export const App: React.FC = () => {
               lastRecording={lastRecording}
               onCopyPath={(p) => handleCopyText(p)}
               onShowInFolder={handleShowInFolder}
+              environment={systemEnvironment}
             />
           )}
 
@@ -631,6 +637,7 @@ export const App: React.FC = () => {
           {activeView === 'settings' && (
             <SettingsPanel
               config={config}
+              environment={systemEnvironment}
               onUpdateConfig={handleUpdateConfig}
             />
           )}

@@ -1,12 +1,17 @@
 pub mod capture;
 pub mod config;
+pub mod environment;
 pub mod history;
 pub mod recorder;
 pub mod tools;
 pub mod uploader;
 
-use capture::{copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot, CaptureMode, CaptureResult};
+use capture::{
+    copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot_with_backend, CaptureMode,
+    CaptureResult,
+};
 use config::{load_config, save_config, AppConfig};
+use environment::{get_system_environment_info, SystemEnvironmentInfo};
 use history::{
     add_history_item, clear_history, delete_history_item, load_history,
     toggle_favorite_history_item, update_history_item, HistoryItem,
@@ -201,6 +206,15 @@ async fn perform_upload(
 }
 
 #[tauri::command]
+fn get_system_environment() -> SystemEnvironmentInfo {
+    let cfg = load_config();
+    get_system_environment_info(
+        Some(&cfg.preferred_screenshot_backend),
+        Some(&cfg.preferred_recording_backend),
+    )
+}
+
+#[tauri::command]
 fn get_app_config() -> AppConfig {
     load_config()
 }
@@ -222,11 +236,12 @@ async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> R
         _ => CaptureMode::Fullscreen,
     };
 
-    let result = take_screenshot(
+    let result = take_screenshot_with_backend(
         capture_mode,
         &cfg.save_directory,
         &cfg.default_image_format,
         delay_ms,
+        Some(&cfg.preferred_screenshot_backend),
     )
     .await?;
 
@@ -277,7 +292,14 @@ async fn capture_screen(app: tauri::AppHandle, mode: String, delay_ms: u64) -> R
 #[tauri::command]
 fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Result<(), String> {
     let cfg = load_config();
-    start_recording(&cfg.recordings_directory, &format, fps, include_audio, None)
+    start_recording(
+        &cfg.recordings_directory,
+        &format,
+        fps,
+        include_audio,
+        None,
+        Some(&cfg.preferred_recording_backend),
+    )
 }
 
 #[tauri::command]
@@ -512,6 +534,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            get_system_environment,
             get_app_config,
             update_app_config,
             capture_screen,

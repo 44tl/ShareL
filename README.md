@@ -1,6 +1,6 @@
 # ShareL
 
-ShareL is a Linux-native desktop application designed for fast screen capture, recording, and custom destination sharing on modern Wayland compositors (GNOME, KDE Plasma, Sway, and Hyprland). It supports ShareX `.sxcu` custom uploader configurations, full image annotation, automated post-capture workflows, and media encoding.
+ShareL is a Linux-native desktop application designed for fast screen capture, recording, and custom destination sharing on modern Wayland compositors (**Niri**, **Hyprland**, **Sway**, **GNOME**, **KDE Plasma**, and **COSMIC**). It supports ShareX `.sxcu` custom uploader configurations, full image annotation, automated post-capture workflows, and media encoding.
 
 <img width="1920" height="972" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/ef84fb54-c7bc-4bf0-8b84-3cce8ae3c609" />
 
@@ -12,10 +12,31 @@ Run the automated installer script:
 curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 ```
 
+## First-Class Wayland Architecture & Backends
+
+ShareL detects your Wayland compositor automatically and routes captures through the most efficient available backend:
+
+```text
+Backend Architecture
+├── XDG Desktop Portal (ashpd screenshot & screencast API)
+├── grim/slurp (Direct Wayland screencopy & interactive region selection)
+├── gpu-screen-recorder (Hardware-accelerated NVENC / VAAPI video recording)
+├── wf-recorder (Wayland screencopy video/GIF recorder)
+└── Compositor-Specific Integration
+    ├── Niri (`niri msg action screenshot`, `screenshot-screen`, `screenshot-window`)
+    ├── Hyprland (`hyprctl activewindow -j` window geometry tracking)
+    ├── Sway (`swaymsg -t get_tree` tree introspection)
+    ├── COSMIC (`cosmic-comp` / `cosmic-screenshot` portal integration)
+    ├── GNOME (Mutter Portal & Shell DBus)
+    ├── KDE Plasma (KWin Portal & Spectacle DBus)
+    └── Generic Wayland Fallback (Standard wlroots / screencopy protocol)
+```
+
 ## Features
 
 ### Capture and Recording
-* **Wayland Integration**: Utilizes XDG Desktop Portal for region, window, and fullscreen captures, with grim and slurp fallbacks for minimal compositors.
+* **First-Class Wayland Compositors**: Native support for **Niri** (scrollable tiling), **Hyprland**, **Sway**, **GNOME**, **KDE Plasma**, and **COSMIC**.
+* **Intelligent Backend Routing**: Seamless fallback across XDG Desktop Portal, grim/slurp, gpu-screen-recorder, wf-recorder, and compositor-native IPC.
 * **Screen Recording**: Supports gpu-screen-recorder and wf-recorder backends, including animated GIF output with two-pass palette optimization and MP4 recording.
 * **Configurable Delay**: Capture delay timer (0 to 5 seconds) for capturing menus, tooltips, and temporary UI states.
 
@@ -40,11 +61,49 @@ curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 * **QR Code Studio**: Generate and inspect QR codes directly within the utility panel.
 * **Capture History**: Searchable gallery of captures and recordings with favorites and quick action buttons.
 
+## Compositor Keybinding Configuration
+
+### Niri (`~/.config/niri/config.kdl`)
+```kdl
+binds {
+    // Interactive Region Capture
+    Print { spawn "sharel" "capture" "region"; }
+    
+    // Region Capture with Instant Upload
+    Mod+Print { spawn "sharel" "capture" "region" "--upload"; }
+    
+    // Window Capture
+    Alt+Print { spawn "sharel" "capture" "window"; }
+    
+    // Fullscreen Capture
+    Ctrl+Print { spawn "sharel" "capture" "fullscreen"; }
+}
+```
+
+### Hyprland (`~/.config/hypr/hyprland.conf`)
+```ini
+bind = , Print, exec, sharel capture region
+bind = SUPER, Print, exec, sharel capture region --upload
+bind = ALT, Print, exec, sharel capture window
+bind = CTRL, Print, exec, sharel capture fullscreen
+```
+
+### Sway (`~/.config/sway/config`)
+```ini
+bindsym Print exec sharel capture region
+bindsym $mod+Print exec sharel capture region --upload
+bindsym Mod1+Print exec sharel capture window
+bindsym Control+Print exec sharel capture fullscreen
+```
+
 ## Command Line Interface
 
 ShareL can be integrated into system keybindings, shell scripts, and terminal workflows:
 
 ```bash
+# Print compositor & backend diagnostics
+sharel info
+
 # Interactive region capture
 sharel capture region
 
@@ -53,6 +112,9 @@ sharel capture fullscreen --upload
 
 # Delayed capture (3 seconds) with automatic upload
 sharel capture region -d 3 -u
+
+# Override capture backend explicitly (auto, grim_slurp, xdg_desktop_portal, compositor)
+sharel capture region --backend grim_slurp
 
 # Upload an existing local file
 sharel upload /path/to/image.png
@@ -70,17 +132,17 @@ ShareL requires standard media and system libraries depending on your distributi
 
 ### Arch Linux
 ```bash
-sudo pacman -S ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1 wl-clipboard
+sudo pacman -S ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1 wl-clipboard grim slurp
 ```
 
 ### Fedora
 ```bash
-sudo dnf install ffmpeg tesseract webkit2gtk4.1-devel wl-clipboard
+sudo dnf install ffmpeg tesseract webkit2gtk4.1-devel wl-clipboard grim slurp
 ```
 
 ### Ubuntu / Debian (Wayland Session)
 ```bash
-sudo apt install ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev wl-clipboard
+sudo apt install ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev wl-clipboard grim slurp
 ```
 
 ## Build and Development

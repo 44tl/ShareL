@@ -24,6 +24,38 @@ export interface GlobalShortcuts {
   ocr_last_capture: string;
 }
 
+export type CompositorKind =
+  | 'niri'
+  | 'hyprland'
+  | 'sway'
+  | 'gnome'
+  | 'kde_plasma'
+  | 'cosmic'
+  | 'generic_wayland'
+  | 'x11'
+  | 'unknown';
+
+export interface BackendAvailability {
+  xdg_desktop_portal: boolean;
+  grim: boolean;
+  slurp: boolean;
+  gpu_screen_recorder: boolean;
+  wf_recorder: boolean;
+  ffmpeg: boolean;
+  compositor_integration: boolean;
+  compositor_cli_name?: string;
+}
+
+export interface SystemEnvironmentInfo {
+  compositor: CompositorKind;
+  compositor_name: string;
+  session_type: string;
+  wayland_display?: string;
+  backends: BackendAvailability;
+  preferred_screenshot_backend: string;
+  preferred_recording_backend: string;
+}
+
 export interface AppConfig {
   save_directory: string;
   recordings_directory: string;
@@ -37,6 +69,8 @@ export interface AppConfig {
   active_uploader_id: string;
   theme: string;
   minimize_to_tray: boolean;
+  preferred_screenshot_backend?: string;
+  preferred_recording_backend?: string;
   shortcuts: GlobalShortcuts;
 }
 
@@ -50,6 +84,7 @@ export interface CaptureResult {
   timestamp: number;
   data_url: string;
   format: string;
+  backend_used?: string;
 }
 
 export interface RecordingStatus {
@@ -57,6 +92,7 @@ export interface RecordingStatus {
   duration_seconds: number;
   output_path?: string;
   format?: string;
+  backend?: string;
 }
 
 export interface RecordingResult {
@@ -67,6 +103,7 @@ export interface RecordingResult {
   duration_seconds: number;
   format: string;
   timestamp: number;
+  backend_used?: string;
 }
 
 export interface CustomUploaderConfig {

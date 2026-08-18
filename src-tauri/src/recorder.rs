@@ -14,6 +14,7 @@ pub struct RecordingState {
     pub format: String,
     pub is_gif: bool,
     pub fps: u32,
+    pub backend: String,
     pub temp_video_path: Option<PathBuf>,
 }
 
@@ -23,6 +24,7 @@ pub struct RecordingStatus {
     pub duration_seconds: u64,
     pub output_path: Option<String>,
     pub format: Option<String>,
+    pub backend: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +36,7 @@ pub struct RecordingResult {
     pub duration_seconds: u64,
     pub format: String,
     pub timestamp: i64,
+    pub backend_used: String,
 }
 
 pub fn get_recording_status() -> RecordingStatus {
@@ -45,6 +48,7 @@ pub fn get_recording_status() -> RecordingStatus {
             duration_seconds: duration,
             output_path: Some(r.output_path.to_string_lossy().to_string()),
             format: Some(r.format.clone()),
+            backend: Some(r.backend.clone()),
         }
     } else {
         RecordingStatus {
@@ -52,6 +56,7 @@ pub fn get_recording_status() -> RecordingStatus {
             duration_seconds: 0,
             output_path: None,
             format: None,
+            backend: None,
         }
     }
 }
@@ -62,6 +67,7 @@ pub fn start_recording(
     fps: u32,
     include_audio: bool,
     region: Option<String>,
+    preferred_backend: Option<&str>,
 ) -> Result<(), String> {
     let mut state_lock = RECORDING_PROCESS.lock().unwrap();
     if state_lock.is_some() {
@@ -91,7 +97,7 @@ pub fn start_recording(
         final_path.to_string_lossy().to_string()
     };
 
-    let target_fps = fps.clamp(30, 60);
+    let target_fps = fps.clamp(15, 60);
 
     let has_gpu_recorder = Command::new("which")
         .arg("gpu-screen-recorder")
@@ -111,7 +117,9 @@ pub fn start_recording(
         .map(|o| o.status.success())
         .unwrap_or(false);
 
-    let child = if has_gpu_recorder {
+    let pref = preferred_backend.unwrap_or("auto");
+
+    let (child, backend_name) = if (pref == "gpu-screen-recorder" || (pref == "auto" && has_gpu_recorder)) && has_gpu_recorder {
         let mut cmd = Command::new("gpu-screen-recorder");
         cmd.arg("-w").arg("screen");
         cmd.arg("-f").arg(target_fps.to_string());
@@ -121,8 +129,9 @@ pub fn start_recording(
         if include_audio {
             cmd.arg("-a").arg("default_output");
         }
-        cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?
-    } else if has_wf {
+        let child = cmd.spawn().map_err(|e| format!("Failed to spawn gpu-screen-recorder: {}", e))?;
+        (child, "gpu-screen-recorder".to_string())
+    } else if (pref == "wf-recorder" || (pref == "auto" && has_wf) || (!has_gpu_recorder && has_wf)) && has_wf {
         let mut cmd = Command::new("wf-recorder");
         cmd.arg("-f").arg(&record_target);
         cmd.arg("-r").arg(target_fps.to_string());
@@ -137,7 +146,8 @@ pub fn start_recording(
             cmd.arg("-a");
         }
 
-        cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?
+        let child = cmd.spawn().map_err(|e| format!("Failed to spawn wf-recorder: {}", e))?;
+        (child, "wf-recorder".to_string())
     } else if has_ffmpeg {
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-y");
@@ -150,7 +160,8 @@ pub fn start_recording(
         }
         cmd.arg("-c:v").arg("libx264").arg("-preset").arg("ultrafast");
         cmd.arg(&record_target);
-        cmd.spawn().map_err(|e| format!("Failed to spawn ffmpeg recorder: {}", e))?
+        let child = cmd.spawn().map_err(|e| format!("Failed to spawn ffmpeg recorder: {}", e))?;
+        (child, "ffmpeg".to_string())
     } else {
         return Err("No supported screen recorder backend (gpu-screen-recorder, wf-recorder, or ffmpeg) found on this system.".to_string());
     };
@@ -162,6 +173,7 @@ pub fn start_recording(
         format: target_format.to_string(),
         is_gif,
         fps: target_fps,
+        backend: backend_name,
         temp_video_path,
     });
 
@@ -224,5 +236,6 @@ pub fn stop_recording() -> Result<RecordingResult, String> {
         duration_seconds: duration,
         format: state.format,
         timestamp: state.start_time,
+        backend_used: state.backend,
     })
 }
