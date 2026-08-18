@@ -1,5 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 use sharel_lib::capture::{
     copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot_with_backend, CaptureMode,
 };
@@ -316,7 +314,18 @@ async fn run_cli(args: Vec<String>) {
             match take_screenshot_with_backend(mode, &cfg.save_directory, &format, delay_ms, backend_pref).await {
                 Ok(result) => {
                     println!("Screenshot saved (via {}): {}", result.backend_used, result.file_path);
-                    let _ = copy_image_to_clipboard(Path::new(&result.file_path));
+
+                    let should_copy = if args.iter().any(|a| a == "--copy" || a == "-p") {
+                        true
+                    } else if args.iter().any(|a| a == "--no-copy") {
+                        false
+                    } else {
+                        cfg.after_capture.copy_to_clipboard
+                    };
+
+                    if should_copy {
+                        let _ = copy_image_to_clipboard(Path::new(&result.file_path));
+                    }
 
                     let history_item = HistoryItem {
                         id: result.id.clone(),
