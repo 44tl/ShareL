@@ -1,88 +1,103 @@
-ShareL is the Linux-native counterpart to ShareX, designed for speed, reliability, and modern Wayland compositors (GNOME, KDE Plasma, Sway, and Hyprland). It provides full compatibility with ShareX `.sxcu` custom uploader files, instant screen annotations, automated capture workflows, and fast media encoding.
+# ShareL
 
-<img width="1920" height="972" alt="image" src="https://github.com/user-attachments/assets/ef84fb54-c7bc-4bf0-8b84-3cce8ae3c609" />
+ShareL is a Linux-native desktop application designed for fast screen capture, recording, and custom destination sharing on modern Wayland compositors (GNOME, KDE Plasma, Sway, and Hyprland). It supports ShareX `.sxcu` custom uploader configurations, full image annotation, automated post-capture workflows, and media encoding.
+
+<img width="1920" height="972" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/ef84fb54-c7bc-4bf0-8b84-3cce8ae3c609" />
 
 ## Quick Installation
+
+Run the automated installer script:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 ```
 
-## Key Capabilities
+## Features
 
-### Native Wayland Capture & Recording
-- **Universal Wayland Portal**: Direct XDG Desktop Portal integration for sub-millisecond region, window, and fullscreen capture.
-- **In-Process Stream Recording**: Native GStreamer PipeWire pipeline producing MP4 video and animated GIFs with two-pass palette optimization.
-- **Configurable Timer**: Capture delay timer (0s to 5s) for menus, tooltips, and dynamic UI elements.
+### Capture and Recording
+* **Wayland Integration**: Utilizes XDG Desktop Portal for region, window, and fullscreen captures, with grim and slurp fallbacks for minimal compositors.
+* **Screen Recording**: Supports gpu-screen-recorder and wf-recorder backends, including animated GIF output with two-pass palette optimization and MP4 recording.
+* **Configurable Delay**: Capture delay timer (0 to 5 seconds) for capturing menus, tooltips, and temporary UI states.
 
-### Interactive Image Annotation Editor
-- **Vector Annotation Tools**: Directional arrows, rectangles, circles, lines, pen brush, and semi-transparent highlighters.
-- **Step Badges**: Auto-incrementing numbered markers (1, 2, 3...) for reproduction steps and guides.
-- **Pixelation Filter**: Instant obfuscation for tokens, passwords, and sensitive areas.
-- **Text & Cropping**: Text callouts and boundary cropping.
-- **Full History**: Keyboard undo (`Ctrl + Z`) and redo (`Ctrl + Y` / `Ctrl + Shift + Z`).
+### Annotation Editor
+* **Vector Tools**: Arrows, rectangles, ellipses, lines, freehand brush, and semi-transparent highlighters.
+* **Step Markers**: Auto-incrementing numbered badges for documentation and bug reproduction steps.
+* **Obfuscation**: Pixelation filter for masking passwords, credentials, and sensitive information.
+* **Text and Crop**: Text insertion and image boundary cropping.
+* **History Control**: Undo (`Ctrl + Z`) and redo (`Ctrl + Y` / `Ctrl + Shift + Z`).
 
-### ShareX Custom Uploader (.sxcu) Engine
-- **100% Compatibility**: Import existing `.sxcu` destination configurations directly from ShareX.
-- **Custom Domains**: Prepend vanity domains and CDN URLs to response tokens.
-- **Dynamic Extraction**: Parse responses with JSONPath (`$json:path$`), regex groups (`$regex:1$`), and response headers (`$header:Location$`).
-- **Live Test Inspector**: Built-in test sandbox displaying HTTP status, roundtrip latency, and response payloads.
+### ShareX (.sxcu) Custom Uploaders
+* **Full Compatibility**: Import and run existing `.sxcu` configuration files directly.
+* **Payload Types**: Supports MultipartFormData, JSON, FormUrlEncoded, and raw binary uploads.
+* **Custom Domain Mapping**: Prepend custom domain names or CDN prefixes to uploaded file URLs.
+* **Response Parsing**: Extract URLs using JSONPath (`$json:path.to.key$`), regular expressions (`$regex:pattern,group$`), and response headers (`$header:Location$`).
+* **Test Sandbox**: Built-in test inspector displaying HTTP status codes, latency, and raw response bodies.
 
-### Productivity Tools & History
-- **Screen Color Picker**: Instant sampling with HEX, RGB, RGBA, and HSL formats.
-- **Pixel Ruler**: Real-time screen dimension, area, diagonal, and aspect ratio calculator.
-- **OCR Text Extraction**: Extract readable text from screenshots via Tesseract.
-- **QR Studio**: Live QR generator and scanner.
-- **Timeline Gallery**: Searchable capture history with favorites and quick actions.
+### Integrated Tools
+* **Color Picker**: Inspect screen pixel colors with HEX, RGB, RGBA, and HSL formatting.
+* **Pixel Calculator**: Calculate pixel dimensions, surface area, diagonal distance, and aspect ratio.
+* **OCR Text Extraction**: Extract text from images using Tesseract OCR.
+* **QR Code Studio**: Generate and inspect QR codes directly within the utility panel.
+* **Capture History**: Searchable gallery of captures and recordings with favorites and quick action buttons.
 
-### Command Line Interface (CLI)
-ShareL can be triggered from global desktop keybinds, scripts, or terminal:
-- `sharel capture region`: Take an interactive region screenshot.
-- `sharel capture fullscreen --upload`: Take a fullscreen screenshot and upload it immediately.
-- `sharel capture region -d 3 -u`: Take a delayed screenshot with automatic upload.
-- `sharel upload /path/to/image.png`: Upload a file to your configured ShareX destination.
-- `sharel ocr /path/to/image.png`: Extract text from an image and copy it to clipboard.
-- `sharel uploaders`: List all configured destinations.
+## Command Line Interface
 
----
+ShareL can be integrated into system keybindings, shell scripts, and terminal workflows:
 
-## Installation & Requirements
+```bash
+# Interactive region capture
+sharel capture region
 
-### System Dependencies
-ShareL uses native Wayland XDG Desktop Portal and GStreamer PipeWire pipelines directly within the binary:
+# Fullscreen capture with immediate upload
+sharel capture fullscreen --upload
 
-- **Arch Linux**:
-  ```bash
-  sudo pacman -S gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugin-pipewire ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1
-  ```
+# Delayed capture (3 seconds) with automatic upload
+sharel capture region -d 3 -u
 
-- **Fedora**:
-  ```bash
-  sudo dnf install gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugin-pipewire ffmpeg tesseract webkit2gtk4.1-devel
-  ```
+# Upload an existing local file
+sharel upload /path/to/image.png
 
-- **Ubuntu / Debian (Wayland session)**:
-  ```bash
-  sudo apt install gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-pipewire ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev
-  ```
+# Extract text via OCR
+sharel ocr /path/to/image.png
 
----
+# List configured destinations
+sharel uploaders
+```
 
-## Development & Build
+## System Dependencies
 
-### Running Locally
+ShareL requires standard media and system libraries depending on your distribution:
+
+### Arch Linux
+```bash
+sudo pacman -S ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1 wl-clipboard
+```
+
+### Fedora
+```bash
+sudo dnf install ffmpeg tesseract webkit2gtk4.1-devel wl-clipboard
+```
+
+### Ubuntu / Debian (Wayland Session)
+```bash
+sudo apt install ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev wl-clipboard
+```
+
+## Build and Development
+
+### Development Environment
 ```bash
 # Install frontend dependencies
 pnpm install
 
-# Run application in development mode
+# Start development application
 pnpm tauri dev
 ```
 
-### Compiling Production Binary
+### Production Compilation
 ```bash
-# Build desktop binary
+# Build desktop binary and distribution packages
 pnpm tauri build
 ```
 
-The compiled binary will be generated at `src-tauri/target/release/sharel`.
+The compiled binary will be located at `src-tauri/target/release/sharel`.
