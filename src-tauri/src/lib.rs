@@ -6,6 +6,8 @@ pub mod recorder;
 pub mod tools;
 pub mod uploader;
 
+// todo: update capture part later.
+
 use capture::{
     copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot_with_backend, CaptureMode,
     CaptureResult,

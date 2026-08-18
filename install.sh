@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+## todo: update all later, works perfect as of now in all supported distrobutions.
+
 APP_NAME="ShareL"
 BIN_NAME="sharel"
 INSTALL_DIR="${HOME}/.local/bin"

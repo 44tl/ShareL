@@ -86,12 +86,16 @@ pub fn list_custom_uploaders() -> Vec<CustomUploaderConfig> {
     let dir = get_uploaders_dir();
     let mut uploaders = Vec::new();
 
-    if let Ok(entries) = fs::read_dir(dir) {
+    if let Ok(entries) = fs::read_dir(&dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("sxcu")
                 || path.extension().and_then(|s| s.to_str()) == Some("json")
             {
+                if path.file_stem().and_then(|s| s.to_str()) == Some("sxcu_freeimage") {
+                    let _ = fs::remove_file(&path);
+                    continue;
+                }
                 if let Ok(contents) = fs::read_to_string(&path) {
                     if let Ok(mut config) = serde_json::from_str::<CustomUploaderConfig>(&contents) {
                         if config.id.is_empty() {
@@ -106,31 +110,52 @@ pub fn list_custom_uploaders() -> Vec<CustomUploaderConfig> {
 
     if uploaders.is_empty() {
         let default_uploader = CustomUploaderConfig {
-            id: "sxcu_freeimage".to_string(),
+            id: "sxcu_0x0".to_string(),
             version: Some("15.0.0".to_string()),
-            name: "Freeimage Host".to_string(),
+            name: "0x0 (The Null Pointer)".to_string(),
             destination_type: "ImageUploader".to_string(),
             request_method: "POST".to_string(),
-            request_url: "https://freeimage.host/api/1/upload".to_string(),
+            request_url: "https://0x0.st".to_string(),
+            headers: HashMap::new(),
+            parameters: HashMap::new(),
+            arguments: HashMap::new(),
+            body: "MultipartFormData".to_string(),
+            file_form_name: "file".to_string(),
+            data: None,
+            url_pattern: Some("$response$".to_string()),
+            thumbnail_url_pattern: None,
+            deletion_url_pattern: None,
+            error_message_pattern: None,
+        };
+
+        let litterbox_uploader = CustomUploaderConfig {
+            id: "sxcu_litterbox".to_string(),
+            version: Some("15.0.0".to_string()),
+            name: "Litterbox (Catbox)".to_string(),
+            destination_type: "ImageUploader".to_string(),
+            request_method: "POST".to_string(),
+            request_url: "https://litterbox.catbox.moe/resources/internals/api.php".to_string(),
             headers: HashMap::new(),
             parameters: {
                 let mut p = HashMap::new();
-                p.insert("key".to_string(), "6d207e02198a847aa98d0a2a901485a5".to_string());
-                p.insert("action".to_string(), "upload".to_string());
-                p.insert("format".to_string(), "json".to_string());
+                p.insert("reqtype".to_string(), "fileupload".to_string());
+                p.insert("time".to_string(), "72h".to_string());
                 p
             },
             arguments: HashMap::new(),
             body: "MultipartFormData".to_string(),
-            file_form_name: "source".to_string(),
+            file_form_name: "fileToUpload".to_string(),
             data: None,
-            url_pattern: Some("$json:image.url$".to_string()),
-            thumbnail_url_pattern: Some("$json:image.thumb.url$".to_string()),
-            deletion_url_pattern: Some("$json:image.url_viewer$".to_string()),
-            error_message_pattern: Some("$json:error.message$".to_string()),
+            url_pattern: Some("$response$".to_string()),
+            thumbnail_url_pattern: None,
+            deletion_url_pattern: None,
+            error_message_pattern: None,
         };
+
         save_custom_uploader(&default_uploader).ok();
+        save_custom_uploader(&litterbox_uploader).ok();
         uploaders.push(default_uploader);
+        uploaders.push(litterbox_uploader);
     }
 
     uploaders

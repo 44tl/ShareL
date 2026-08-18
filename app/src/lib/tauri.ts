@@ -44,7 +44,7 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
           open_url_in_browser: false,
           show_notification: true,
         },
-        active_uploader_id: 'sxcu_freeimage',
+        active_uploader_id: 'sxcu_0x0',
         theme: 'dark',
         minimize_to_tray: true,
         shortcuts: {
@@ -123,24 +123,18 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
     case 'list_uploaders':
       return Promise.resolve([
         {
-          id: 'sxcu_freeimage',
+          id: 'sxcu_0x0',
           Version: '15.0.0',
-          Name: 'Freeimage Host',
+          Name: '0x0 (The Null Pointer)',
           DestinationType: 'ImageUploader',
           RequestMethod: 'POST',
-          RequestURL: 'https://freeimage.host/api/1/upload',
+          RequestURL: 'https://0x0.st',
           Headers: {},
-          Parameters: {
-            key: '6d207e02198a847aa98d0a2a901485a5',
-            action: 'upload',
-            format: 'json',
-          },
+          Parameters: {},
           Arguments: {},
           Body: 'MultipartFormData',
-          FileFormName: 'source',
-          URL: '$json:image.url$',
-          ThumbnailURL: '$json:image.thumb.url$',
-          DeletionURL: '$json:image.url_viewer$',
+          FileFormName: 'file',
+          URL: '$response$',
         },
         {
           id: 'sxcu_imgur',

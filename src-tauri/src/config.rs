@@ -177,7 +177,7 @@ impl Default for AppConfig {
             recording_auto_upload: false,
             after_capture: AfterCaptureTasks::default(),
             after_upload: AfterUploadTasks::default(),
-            active_uploader_id: "sxcu_freeimage".to_string(),
+            active_uploader_id: "sxcu_0x0".to_string(),
             theme: "dark".to_string(),
             minimize_to_tray: true,
             preferred_screenshot_backend: "auto".to_string(),
@@ -199,8 +199,8 @@ pub fn load_config() -> AppConfig {
     let path = get_config_path();
     if let Ok(contents) = fs::read_to_string(&path) {
         if let Ok(mut cfg) = serde_json::from_str::<AppConfig>(&contents) {
-            if cfg.active_uploader_id == "default_sxcu" {
-                cfg.active_uploader_id = "sxcu_freeimage".to_string();
+            if cfg.active_uploader_id == "default_sxcu" || cfg.active_uploader_id == "sxcu_freeimage" {
+                cfg.active_uploader_id = "sxcu_0x0".to_string();
                 save_config(&cfg).ok();
             }
             return cfg;
