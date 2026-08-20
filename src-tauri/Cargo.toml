@@ -34,7 +34,7 @@ arboard = "3.4"
 open = "5.3"
 libc = "0.2"
 ashpd = { version = "0.9", default-features = false, features = ["tokio"] }
-glib = "0.20"
+glib = "0.18"
 tauri-plugin-global-shortcut = "2"
 
 [profile.dev]
