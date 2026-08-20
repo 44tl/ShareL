@@ -1,111 +1,90 @@
 # ShareL
 
-ShareL is a Linux-native desktop application for screen capture, recording, and
-custom destination sharing on modern Wayland compositors (**Niri**, **Hyprland**,
-**Sway**, **GNOME**, **KDE Plasma**, and **COSMIC**). It supports ShareX `.sxcu`
-custom uploader configurations, image annotation, automated post-capture
-workflows, and media encoding.
+<p align="center">
+  <img src="sharel-logo.svg" alt="ShareL Logo" width="120" height="120" />
+</p>
 
-Current version 1.0.0
+<p align="center">
+  <strong>The feature-packed screen capture, recording, and sharing tool built natively for Linux Wayland.</strong>
+</p>
 
-<img width="1920" height="1032" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/546ec53a-cabb-4365-97f0-415b43b78889" />
+---
 
-## Quick Installation
+ShareL brings the versatility of ShareX to modern Linux desktops. Whether you are capturing pixel-perfect regions on **Niri** or **Hyprland**, recording high-framerate gameplay via **GPU Screen Recorder**, annotating screenshots before sending them off, or sharing directly to your personal image host using `.sxcu` destination files, ShareL has you covered with zero friction.
 
-Run the automated installer script. It fetches the latest source, installs system
-dependencies with your package manager, compiles the frontend and native binary,
-and installs `sharel` into `~/.local/bin`:
+<p align="center">
+  <img width="1920" height="1032" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/546ec53a-cabb-4365-97f0-415b43b78889" />
+</p>
+
+---
+
+## Quick Install
+
+You can install ShareL with a single command. The script detects your Linux distribution, checks required packages, builds the app, and places `sharel` in your `~/.local/bin`:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash
 ```
 
-The installer accepts the following options:
+### Installer Flags
+
+If you would like more control over how it is installed:
 
 ```bash
-# Skip system dependency installation
+# Skip package manager dependency installation
 ./install.sh --no-deps
 
-# Skip compilation and install an already-built binary
+# Skip building and install an existing release binary
 ./install.sh --no-build
 
-# Reinstall even if ShareL is already present
+# Force reinstall even if already installed
 ./install.sh --force
 
-# Install binaries into a custom prefix (default: ~/.local/bin)
-./install.sh --prefix /opt
-
-# Show help
-./install.sh --help
+# Custom install destination (default: ~/.local/bin)
+./install.sh --prefix /usr/local
 ```
 
-## Features
+---
 
-### Capture and Recording
+## Features at a Glance
 
-* **First-Class Wayland Compositors**: Native integration with **Niri**
-  (scrollable tiling), **Hyprland**, **Sway**, **GNOME**, **KDE Plasma**, and
-  **COSMIC**.
-* **Intelligent Backend Routing**: Seamless fallback across XDG Desktop Portal,
-  `grim`/`slurp`, and compositor-native IPC.
-* **Capture Modes**: Interactive Region selection with magnifier, Fullscreen
-  display capture, and targeted Application Window capture.
-* **Configurable Delay**: Delay timer for capturing menus, dropdowns, and
-  temporary tooltips.
-* **Hardware Acceleration**: Support for `gpu-screen-recorder` (NVENC/VAAPI) and
-  `wf-recorder` backends.
-* **Framerate and Codec Control**: 30, 60, 120, and custom FPS selector with
-  Constant Frame Rate (CFR) pacing; H.264, H.265/HEVC, AV1, VP9, and GIF
-  encoding.
-* **Asynchronous Transcoding**: Non-blocking background encoding workers with
-  real-time UI progress bars.
-* **Audio Routing**: Capture system audio, microphone, or both channels
-  simultaneously.
-* **GIF Studio**: Two-pass palette optimization (`palettegen` + `paletteuse`)
-  for chat and web sharing.
+### Screen Capture and Video Recording
+* **Built for Wayland First**: Smooth, native support for **Niri** (with horizontal scrolling awareness), **Hyprland**, **Sway**, **GNOME**, **KDE Plasma**, and **COSMIC**.
+* **Smart Backend Fallback**: Automatic routing between XDG Desktop Portal, direct `grim`/`slurp`, and native compositor IPC.
+* **Versatile Modes**: Interactive region selection with a pixel magnifier, fullscreen capture, or targeted active window capture.
+* **Delay Timer**: Set countdown delays to easily grab open menus, hover tooltips, and contextual dropdowns.
+* **Hardware-Accelerated Recording**: Native integration with `gpu-screen-recorder` (NVENC / VAAPI) and `wf-recorder`.
+* **Flexible Framerates and Codecs**: Record at 30, 60, 120 FPS or custom frame rates; encode to H.264, H.265/HEVC, AV1, VP9, or optimized animated GIFs.
+* **Audio Channels**: Capture pristine desktop audio, microphone input, or mix both together.
+* **Background Transcoding**: Encoding jobs run quietly in worker threads without freezing the UI.
 
-### Annotation Editor
+### Built-in Annotation Editor
+* **Vector Drawing Tools**: Add arrows, rectangles, circles, lines, freehand sketches, and text callouts.
+* **Privacy Pixelation**: Quickly obscure passwords, tokens, API keys, and personal data.
+* **Step Badges**: Place numbered markers to write effortless bug reports and step-by-step guides.
+* **Image Cropping**: Trim screenshots down to the exact boundaries you need.
+* **Full Undo and Redo**: Freely experiment with complete `Ctrl+Z` / `Ctrl+Y` history.
 
-* **Vector Drawing Tools**: Arrows, rectangles, ellipses, lines, and freehand
-  brush.
-* **Obfuscation**: Pixelation filter for masking passwords, credentials, and
-  sensitive data.
-* **Cropping and Text**: Image boundary cropping and typography overlays.
-* **Step Markers**: Numbered annotations for documentation and bug reproduction
-  steps.
-* **History Control**: Full undo (`Ctrl + Z`) and redo (`Ctrl + Y` /
-  `Ctrl + Shift + Z`) stack.
+### ShareX (.sxcu) Custom Destinations
+* **Drop-in ShareX Compatibility**: Directly import `.sxcu` files from your existing ShareX setup.
+* **Keyless Defaults Out of the Box**: Ready to use immediately with zero-config destinations like `0x0.st` and `Litterbox`.
+* **Every Request Format**: Full support for MultipartFormData, JSON payloads, FormUrlEncoded, and binary streams.
+* **Smart Response Extraction**: Extract URLs using JSONPath (`$json:data.url$`), Regular Expressions (`$regex:pattern,1$`), or response headers (`$header:Location$`).
+* **Custom Domain / CDN Mapping**: Automatically replace the upload response host with your custom domain or vanity URL.
+* **Interactive Sandbox**: Test and debug upload configs with instant status codes, response previews, and latency timings.
 
-### ShareX (.sxcu) Custom Uploaders
+### Power Tools
+* **Instant OCR**: Extract text straight from your screen using Tesseract.
+* **Color Picker and Pixel Inspector**: Sample exact hex/rgb colors and calculate aspect ratios, diagonal dimensions, and pixel areas.
+* **QR Code Studio**: Scan and generate QR codes directly in your workspace.
+* **History Gallery**: Browse, search, filter, and favorite all past captures and recordings.
+* **Native File Manager Integration**: Reveal and highlight saved files in Nautilus, Dolphin, COSMIC Files, Thunar, or Nemo via DBus.
 
-* **ShareX Compatibility**: Import and run existing `.sxcu` destination files
-  directly.
-* **Keyless Defaults**: Pre-configured with zero-credential destinations
-  (`0x0.st` and `Litterbox`).
-* **Payload Types**: Supports MultipartFormData, JSON, FormUrlEncoded, and raw
-  binary uploads.
-* **Response Parsing**: Extract URLs using JSONPath (`$json:path.to.key$`),
-  regular expressions (`$regex:pattern,group$`), and response headers
-  (`$header:Location$`).
-* **Custom Domain Mapping**: Rewrite the host of every parsed response URL
-  (URL, ThumbnailURL, DeletionURL) to a personal domain or CDN prefix.
-* **Test Sandbox**: Built-in test inspector displaying HTTP status codes,
-  latency, and raw response bodies.
+---
 
-### Integrated Tools
+## Compositor Keybindings
 
-* **OCR Text Extraction**: Extract text from images using Tesseract OCR.
-* **Color Picker and Pixel Calculator**: Inspect screen pixel colors and
-  calculate pixel dimensions, surface area, diagonal distance, and aspect ratio.
-* **QR Code Studio**: Generate and inspect QR codes directly within the utility
-  panel.
-* **Capture and Recording History**: Gallery of captures and recordings with
-  favorites and metadata.
-* **Native Desktop File Manager**: Direct DBus
-  (`org.freedesktop.FileManager1.ShowItems`) integration to open and highlight
-  files in Nautilus, Dolphin, COSMIC Files, Thunar, or Nemo.
-
-## Compositor Keybinding Configuration
+Add ShareL shortcuts directly to your compositor config for instantaneous capture:
 
 ### Niri (`~/.config/niri/config.kdl`)
 ```kdl
@@ -133,68 +112,86 @@ bindsym Mod1+Print exec sharel capture window
 bindsym Control+Print exec sharel capture fullscreen
 ```
 
-## Command Line Interface
+---
 
-ShareL can be integrated into system keybindings, shell scripts, and terminal
-workflows:
+## CLI Usage
+
+ShareL includes a comprehensive CLI that fits naturally into scripts, terminal aliases, and hotkey daemons:
 
 ```bash
-# Print compositor and backend diagnostics
+# Display detected compositor, tools, and backend status
 sharel info
 
-# Interactive region capture
+# Capture an interactive region
 sharel capture region
 
-# Fullscreen capture with immediate upload
+# Capture fullscreen and upload immediately
 sharel capture fullscreen --upload
 
-# Delayed capture (3 seconds) with automatic upload
+# 3-second delayed region capture with auto-upload
 sharel capture region -d 3 -u
 
-# Override capture backend explicitly (auto, grim_slurp, xdg_desktop_portal, compositor)
+# Force a specific capture backend (auto, grim_slurp, xdg_desktop_portal, compositor)
 sharel capture region --backend grim_slurp
 
 # Upload an existing local file
-sharel upload /path/to/image.png
+sharel upload /path/to/screenshot.png
 
-# Extract text via OCR
-sharel ocr /path/to/image.png
+# Perform OCR on an image file
+sharel ocr /path/to/document.png
 
-# List configured destinations
+# List all available custom uploaders
 sharel uploaders
 ```
 
+---
+
 ## System Dependencies
 
-ShareL requires standard media and system libraries depending on your
-distribution:
+If you prefer to install dependencies manually before building:
 
-### Arch Linux
+### Arch Linux / Manjaro
 ```bash
 sudo pacman -S ffmpeg tesseract tesseract-data-eng webkit2gtk-4.1 wl-clipboard grim slurp
 ```
 
-### Fedora
+### Fedora / RHEL
 ```bash
 sudo dnf install ffmpeg tesseract webkit2gtk4.1-devel wl-clipboard grim slurp
 ```
 
-### Ubuntu / Debian (Wayland Session)
+### Ubuntu / Debian
 ```bash
 sudo apt install ffmpeg tesseract-ocr libwebkit2gtk-4.1-dev wl-clipboard grim slurp
 ```
 
-## Build and Development
+---
 
-### Development Environment
+## Building from Source
+
+### Prerequisites
+* [Node.js](https://nodejs.org/) (v18+) and [pnpm](https://pnpm.io/)
+* [Rust](https://www.rust-lang.org/) and Cargo (stable)
+
+### Development
 ```bash
+# Install frontend packages
 pnpm install
+
+# Run the app in development mode with live reload
 pnpm tauri dev
 ```
 
-### Production Compilation
+### Production Build
 ```bash
+# Build the production release binary
 pnpm tauri build
 ```
 
-The compiled binary will be located at `src-tauri/target/release/sharel`.
+The optimized binary will be placed at `src-tauri/target/release/sharel`.
+
+---
+
+## Contributing
+
+Contributions are welcome. Please check out our [Contributing Guidelines](CONTRIBUTING.md) and [Security Policy](SECURITY.md) before submitting pull requests.
