@@ -315,9 +315,7 @@ pub fn parse_pattern(
 }
 
 pub fn apply_custom_domain(url: Option<String>, custom_domain: Option<&str>) -> Option<String> {
-    let Some(url) = url else {
-        return None;
-    };
+    let url = url?;
     let Some(domain) = custom_domain else {
         return Some(url);
     };
