@@ -164,12 +164,19 @@ pub async fn check_for_updates() -> Result<CheckUpdateResult, String> {
     let download_url = matching_asset.map(|a| a.browser_download_url.clone());
     let asset_name = matching_asset.map(|a| a.name.clone());
 
+    let raw_notes = rel.body.unwrap_or_default();
+    let cleaned_notes = raw_notes
+        .lines()
+        .filter(|line| !line.to_lowercase().contains("dependabot") && !line.contains("@dependabot[bot]"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
     Ok(CheckUpdateResult {
         has_update,
         current_version: current.to_string(),
         latest_version: latest_ver,
         release_name: rel.name.unwrap_or_else(|| rel.tag_name.clone()),
-        release_notes: rel.body.unwrap_or_default(),
+        release_notes: cleaned_notes,
         release_url: rel.html_url,
         published_at: rel.published_at.unwrap_or_default(),
         is_ignored,
