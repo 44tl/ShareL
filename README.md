@@ -19,7 +19,7 @@
 ---
 
 <p align="center">
-  <img width="1920" height="1032" alt="ShareL Desktop Interface" src="https://github.com/user-attachments/assets/546ec53a-cabb-4365-97f0-415b43b78889" />
+  <img width="1920" height="1035" alt="ShareL Desktop Interface Latest" src="https://github.com/user-attachments/assets/283dcdc9-7d2d-4527-ae56-3673c9510ed7" />
 </p>
 
 ---
