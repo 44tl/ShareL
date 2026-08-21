@@ -1,14 +1,11 @@
 # ShareL
-[![No AI](https://raw.githubusercontent.com/nuxy/no-ai-badge/master/badge.svg)](https://github.com/nuxy/no-ai-badge)
 
-<p align="center">
-  <img src="sharel-logo.svg" alt="ShareL Logo" width="120" height="120" />
-</p>
+<img src="https://raw.githubusercontent.com/44tl/NoAI/main/no-ai.svg" width="120" alt="NO AI">
 
 <p align="center">
   <strong>The feature-packed screen capture, recording, and sharing tool built natively for Linux Wayland.</strong>
 </p>
-
+s
 ---
 
 ShareL brings the versatility of ShareX to modern Linux desktops. Whether you are capturing pixel-perfect regions on **Niri** or **Hyprland**, recording high-framerate gameplay via **GPU Screen Recorder**, annotating screenshots before sending them off, or sharing directly to your personal image host using `.sxcu` destination files, ShareL has you covered with zero friction.
