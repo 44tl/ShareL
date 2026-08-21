@@ -1,6 +1,6 @@
 import React from 'react';
-import { Camera, Video, Circle, ShieldCheck, Monitor } from 'lucide-react';
-import { AppConfig, RecordingStatus } from '../types';
+import { Camera, Video, Circle, ShieldCheck, Monitor, Sparkles } from 'lucide-react';
+import { AppConfig, CheckUpdateResult, RecordingStatus } from '../types';
 
 interface NavbarProps {
   recordingStatus: RecordingStatus;
@@ -9,6 +9,8 @@ interface NavbarProps {
   onStopRecording: () => void;
   activeView: string;
   config?: AppConfig | null;
+  updateInfo?: CheckUpdateResult | null;
+  onOpenUpdateModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,6 +19,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onStartRecording,
   onStopRecording,
   config,
+  updateInfo,
+  onOpenUpdateModal,
 }) => {
   const formatSeconds = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -75,6 +79,35 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {updateInfo && updateInfo.has_update && !updateInfo.is_ignored && (
+          <button
+            onClick={onOpenUpdateModal}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: 'rgba(99, 102, 241, 0.18)',
+              color: 'var(--md-sys-color-primary)',
+              border: '1px solid rgba(99, 102, 241, 0.4)',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-pill)',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.28)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.18)';
+            }}
+          >
+            <Sparkles size={14} color="var(--md-sys-color-primary)" />
+            <span>Update Available (v{updateInfo.latest_version})</span>
+          </button>
+        )}
+
         {recordingStatus.is_processing && (
           <div
             style={{

@@ -57,6 +57,10 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
           upload_last_capture: '',
           ocr_last_capture: '',
         },
+        check_updates_on_startup: true,
+        auto_check_updates: true,
+        ignored_versions: [],
+        update_channel: 'stable',
       } as unknown as T);
 
     case 'update_app_config':
@@ -205,6 +209,59 @@ function fallbackHandler<T>(cmd: string, args: Record<string, unknown>): Promise
       return Promise.resolve({
         success: true,
         text: 'Extracted text sample from screen capture using ShareL.',
+      } as unknown as T);
+
+    case 'check_for_updates_cmd':
+      return Promise.resolve({
+        has_update: true,
+        current_version: '1.0.0',
+        latest_version: '1.1.0',
+        release_name: 'ShareL v1.1.0 - Next-Gen Performance & Wayland Tools',
+        release_notes: '### What\'s New in v1.1.0\n- 🚀 Improved multi-monitor screenshot capture\n- 🎬 GPU accelerated recording stability with NVENC & VAAPI\n- 🔄 Integrated Auto-Update Engine with Rollback and Skip Version support\n- 📦 Automated multi-distro Linux package releases',
+        release_url: 'https://github.com/44tl/ShareL/releases/tag/v1.1.0',
+        published_at: new Date().toISOString(),
+        is_ignored: false,
+        download_url: 'https://github.com/44tl/ShareL/releases/download/v1.1.0/ShareL-x86_64.AppImage',
+        asset_name: 'ShareL-x86_64.AppImage',
+      } as unknown as T);
+
+    case 'list_available_releases_cmd':
+      return Promise.resolve([
+        {
+          tag_name: 'v1.1.0',
+          name: 'ShareL v1.1.0 - Next-Gen Performance',
+          body: 'Latest features and bugfixes.',
+          html_url: 'https://github.com/44tl/ShareL/releases/tag/v1.1.0',
+          published_at: new Date().toISOString(),
+          prerelease: false,
+          draft: false,
+          assets: [{ name: 'ShareL-x86_64.AppImage', browser_download_url: '', size: 34000000 }],
+        },
+        {
+          tag_name: 'v1.0.0',
+          name: 'ShareL v1.0.0 Initial Release',
+          body: 'Initial release with Wayland screenshot, recording studio, and ShareX hub.',
+          html_url: 'https://github.com/44tl/ShareL/releases/tag/v1.0.0',
+          published_at: '2026-08-15T12:00:00Z',
+          prerelease: false,
+          draft: false,
+          assets: [{ name: 'ShareL-x86_64.AppImage', browser_download_url: '', size: 32000000 }],
+        },
+      ] as unknown as T);
+
+    case 'install_update_cmd':
+    case 'install_version_tag_cmd':
+      return Promise.resolve('Updated ShareL to latest release.' as unknown as T);
+
+    case 'ignore_version_cmd':
+    case 'unignore_version_cmd':
+      return Promise.resolve(undefined as unknown as T);
+
+    case 'rollback_version_cmd':
+      return Promise.resolve({
+        success: true,
+        message: 'Successfully rolled back to ShareL v1.0.0',
+        restored_version: '1.0.0',
       } as unknown as T);
 
     default:

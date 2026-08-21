@@ -20,20 +20,24 @@ NC="\033[0m"
 FORCE=0
 NO_DEPS=0
 NO_BUILD=0
+DO_UPDATE=0
+TARGET_TAG=""
 PREFIX=""
 
 usage() {
   cat <<EOF
 Usage: ./install.sh [OPTIONS]
 
-Install ShareL (compiles from source) into your user environment.
+Install ShareL (compiles from source or fetches release) into your user environment.
 
 Options:
-  --no-deps    Skip system dependency installation
-  --no-build   Skip compilation (use an existing ./src-tauri/target/release binary)
-  --force      Reinstall even if ShareL is already present
-  --prefix DIR Install binaries into DIR (default: ~/.local/bin)
-  -h, --help   Show this help message
+  --update         Fetch latest source/release and update installed ShareL
+  --version TAG    Install or switch to a specific Git release tag (e.g. v1.1.0)
+  --no-deps        Skip system dependency installation
+  --no-build       Skip compilation (use an existing ./src-tauri/target/release binary)
+  --force          Reinstall even if ShareL is already present
+  --prefix DIR     Install binaries into DIR (default: ~/.local/bin)
+  -h, --help       Show this help message
 
 Dependencies are installed automatically with the detected package manager
 (pacman / apt-get / dnf / zypper) unless --no-deps is given.
@@ -42,6 +46,8 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --update) DO_UPDATE=1; FORCE=1 ;;
+    --version) shift; TARGET_TAG="${1:-}"; FORCE=1 ;;
     --no-deps) NO_DEPS=1 ;;
     --no-build) NO_BUILD=1 ;;
     --force) FORCE=1 ;;
@@ -67,7 +73,25 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [ ! -f "${PROJECT_DIR}/src-tauri/Cargo.toml" ]; then
+if [ -n "${TARGET_TAG}" ]; then
+  log_info "Fetching specific release version tag: ${TARGET_TAG}..."
+  TMP_DIR="$(mktemp -d /tmp/sharel-build-XXXXXX)"
+  git clone --branch "${TARGET_TAG}" --depth 1 https://github.com/44tl/ShareL.git "${TMP_DIR}" 2>/dev/null || {
+    git clone https://github.com/44tl/ShareL.git "${TMP_DIR}"
+    ( cd "${TMP_DIR}" && git checkout "${TARGET_TAG}" )
+  }
+  PROJECT_DIR="${TMP_DIR}"
+elif [ "$DO_UPDATE" -eq 1 ]; then
+  if [ -d "${PROJECT_DIR}/.git" ]; then
+    log_info "Updating local repository via git pull..."
+    ( cd "${PROJECT_DIR}" && git pull --rebase ) || true
+  else
+    log_info "Fetching latest master repository..."
+    TMP_DIR="$(mktemp -d /tmp/sharel-build-XXXXXX)"
+    git clone --depth 1 https://github.com/44tl/ShareL.git "${TMP_DIR}"
+    PROJECT_DIR="${TMP_DIR}"
+  fi
+elif [ ! -f "${PROJECT_DIR}/src-tauri/Cargo.toml" ]; then
   log_info "Fetching latest source code repository..."
   TMP_DIR="$(mktemp -d /tmp/sharel-build-XXXXXX)"
   git clone --depth 1 https://github.com/44tl/ShareL.git "${TMP_DIR}"

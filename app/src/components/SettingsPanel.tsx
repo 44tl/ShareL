@@ -8,21 +8,39 @@ import {
   Layers,
   CheckCircle2,
   XCircle,
+  Sparkles,
+  RefreshCw,
+  History,
+  Trash2,
 } from 'lucide-react';
-import { AppConfig, GlobalShortcuts, SystemEnvironmentInfo } from '../types';
+import { AppConfig, CheckUpdateResult, GlobalShortcuts, ReleaseInfo, SystemEnvironmentInfo } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 
 interface SettingsPanelProps {
   config: AppConfig | null;
   environment?: SystemEnvironmentInfo | null;
   onUpdateConfig: (newConfig: AppConfig) => Promise<void>;
+  updateInfo?: CheckUpdateResult | null;
+  onCheckForUpdates?: () => Promise<void>;
+  onTriggerUpdateModal?: () => void;
+  onRollback?: (versionTag?: string) => Promise<void>;
+  availableReleases?: ReleaseInfo[];
+  onUnignoreVersion?: (ver: string) => Promise<void>;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   config,
   environment,
   onUpdateConfig,
+  updateInfo,
+  onCheckForUpdates,
+  onTriggerUpdateModal,
+  onRollback,
+  availableReleases = [],
+  onUnignoreVersion,
 }) => {
+  const [checkingUpdates, setCheckingUpdates] = React.useState(false);
+  const [selectedRollbackTag, setSelectedRollbackTag] = React.useState<string>('');
   if (!config) return null;
 
   const handleChange = <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => {
@@ -511,6 +529,228 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <span style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)' }}>
           Shortcuts are registered system-wide. Format: Ctrl+Shift+PrintScreen, Alt+P, etc. Leave empty to disable an action.
         </span>
+      </div>
+
+      {/* Software Updates & Releases Section */}
+      <div
+        style={{
+          backgroundColor: 'var(--md-sys-color-surface-container)',
+          border: '1px solid var(--md-sys-color-outline-variant)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={18} color="var(--md-sys-color-primary)" />
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+              Software Updates &amp; GitHub Releases
+            </h2>
+          </div>
+
+          <button
+            onClick={async () => {
+              if (onCheckForUpdates) {
+                setCheckingUpdates(true);
+                await onCheckForUpdates();
+                setCheckingUpdates(false);
+              }
+            }}
+            disabled={checkingUpdates}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-pill)',
+              backgroundColor: 'var(--md-sys-color-primary-container)',
+              color: 'var(--md-sys-color-on-primary-container)',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: checkingUpdates ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <RefreshCw size={13} style={{ animation: checkingUpdates ? 'spin 1s linear infinite' : 'none' }} />
+            <span>{checkingUpdates ? 'Checking...' : 'Check for Updates'}</span>
+          </button>
+        </div>
+
+        {updateInfo?.has_update && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              backgroundColor: 'rgba(99, 102, 241, 0.12)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--md-sys-color-primary)' }}>
+                New version available: v{updateInfo.latest_version}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-variant)' }}>
+                {updateInfo.release_name}
+              </span>
+            </div>
+
+            <button
+              onClick={onTriggerUpdateModal}
+              style={{
+                backgroundColor: 'var(--md-sys-color-primary)',
+                color: '#ffffff',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: '12px',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              View &amp; Install Update
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              backgroundColor: 'var(--md-sys-color-surface-container-high)',
+              border: '1px solid var(--md-sys-color-outline-variant)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface)' }}>Check updates on app startup</span>
+            <input
+              type="checkbox"
+              checked={config.check_updates_on_startup ?? true}
+              onChange={(e) => handleChange('check_updates_on_startup', e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
+            />
+          </label>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              backgroundColor: 'var(--md-sys-color-surface-container-high)',
+              border: '1px solid var(--md-sys-color-outline-variant)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '12.5px', color: 'var(--md-sys-color-on-surface)' }}>Automatic periodic checks</span>
+            <input
+              type="checkbox"
+              checked={config.auto_check_updates ?? true}
+              onChange={(e) => handleChange('auto_check_updates', e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--md-sys-color-primary)', cursor: 'pointer' }}
+            />
+          </label>
+        </div>
+
+        {/* Ignored Versions List */}
+        {config.ignored_versions && config.ignored_versions.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--md-sys-color-on-surface-muted)' }}>
+              Ignored / Skipped Versions
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {config.ignored_versions.map((ver) => (
+                <div
+                  key={ver}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: 'var(--md-sys-color-surface-container-high)',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '11.5px',
+                    border: '1px solid var(--md-sys-color-outline-variant)',
+                  }}
+                >
+                  <span>v{ver}</span>
+                  <button
+                    onClick={() => onUnignoreVersion?.(ver)}
+                    title="Unignore this version"
+                    style={{ background: 'none', border: 'none', color: 'var(--md-sys-color-error)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rollback & Revert Tool */}
+        <div
+          style={{
+            marginTop: '8px',
+            padding: '14px',
+            backgroundColor: 'var(--md-sys-color-surface-container-high)',
+            border: '1px solid var(--md-sys-color-outline-variant)',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <History size={15} color="var(--md-sys-color-primary)" />
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--md-sys-color-on-surface)' }}>
+              Version Rollback &amp; Release Reversion
+            </span>
+          </div>
+          <p style={{ fontSize: '11px', color: 'var(--md-sys-color-on-surface-muted)', margin: 0 }}>
+            Revert to previous installed backup or switch directly to any prior GitHub release tag.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ flex: 1 }}>
+              <CustomDropdown
+                value={selectedRollbackTag}
+                onChange={(val) => setSelectedRollbackTag(val)}
+                options={[
+                  { value: '', label: 'Previous Backup Binary (Default)' },
+                  ...availableReleases.map((r) => ({
+                    value: r.tag_name,
+                    label: `${r.tag_name} - ${r.name || 'Release'} (${r.published_at ? new Date(r.published_at).toLocaleDateString() : ''})`,
+                  })),
+                ]}
+              />
+            </div>
+            <button
+              onClick={() => onRollback?.(selectedRollbackTag || undefined)}
+              style={{
+                backgroundColor: 'var(--md-sys-color-surface-container-highest)',
+                border: '1px solid var(--md-sys-color-outline)',
+                color: 'var(--md-sys-color-on-surface)',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Execute Revert
+            </button>
+          </div>
+        </div>
       </div>
 
       <div

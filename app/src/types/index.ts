@@ -82,6 +82,10 @@ export interface AppConfig {
   preferred_screenshot_backend?: string;
   preferred_recording_backend?: string;
   shortcuts: GlobalShortcuts;
+  check_updates_on_startup?: boolean;
+  auto_check_updates?: boolean;
+  ignored_versions?: string[];
+  update_channel?: string;
 }
 
 export interface CaptureResult {
@@ -276,4 +280,49 @@ export interface EditorAnnotation {
   text?: string;
   stepNumber?: number;
   points?: { x: number; y: number }[];
+}
+
+export interface ReleaseAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+  content_type?: string;
+}
+
+export interface ReleaseInfo {
+  tag_name: string;
+  name?: string;
+  body?: string;
+  html_url: string;
+  published_at?: string;
+  prerelease: boolean;
+  draft: boolean;
+  assets: ReleaseAsset[];
+}
+
+export interface CheckUpdateResult {
+  has_update: boolean;
+  current_version: string;
+  latest_version: string;
+  release_name: string;
+  release_notes: string;
+  release_url: string;
+  published_at: string;
+  is_ignored: boolean;
+  download_url?: string;
+  asset_name?: string;
+}
+
+export interface UpdateProgressEvent {
+  status: string;
+  progress_pct: number;
+  bytes_downloaded: number;
+  total_bytes: number;
+  message: string;
+}
+
+export interface RollbackResult {
+  success: boolean;
+  message: string;
+  restored_version?: string;
 }

@@ -5,6 +5,7 @@ pub mod history;
 pub mod recorder;
 pub mod tools;
 pub mod uploader;
+pub mod updater;
 
 use capture::{
     copy_image_to_clipboard, copy_text_to_clipboard, take_screenshot_with_backend, CaptureMode,
@@ -32,6 +33,11 @@ use tools::{extract_text_ocr, open_url_browser, read_file_as_data_url, save_anno
 use uploader::{
     delete_custom_uploader, execute_upload_with_progress, list_custom_uploaders, parse_sxcu_file,
     resolve_active_uploader, save_custom_uploader, CustomUploaderConfig, UploadResult,
+};
+use updater::{
+    check_for_updates, check_for_updates_cmd, ignore_version_cmd, install_update_cmd,
+    install_version_tag_cmd, list_available_releases_cmd, rollback_version_cmd,
+    unignore_version_cmd,
 };
 
 static REGISTERED_SHORTCUTS: Mutex<Vec<Shortcut>> = Mutex::new(Vec::new());
@@ -638,6 +644,18 @@ pub fn run() {
                 });
             }
 
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let cfg = load_config();
+                if cfg.check_updates_on_startup {
+                    if let Ok(info) = check_for_updates().await {
+                        if info.has_update && !info.is_ignored {
+                            let _ = app_handle.emit("update://available", &info);
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -667,7 +685,14 @@ pub fn run() {
             show_file_in_folder,
             open_link,
             ocr_image,
-            get_file_data_url
+            get_file_data_url,
+            check_for_updates_cmd,
+            list_available_releases_cmd,
+            install_update_cmd,
+            ignore_version_cmd,
+            unignore_version_cmd,
+            rollback_version_cmd,
+            install_version_tag_cmd
         ])
         .run(tauri::generate_context!())
         .expect("error while running ShareL application");

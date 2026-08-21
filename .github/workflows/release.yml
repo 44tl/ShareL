@@ -1,0 +1,190 @@
+name: Release & Packaging Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.1.0)'
+        required: true
+        default: 'v1.1.0'
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: "release-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build Multi-Distro Release Artifacts
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Linux build & packaging dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libwebkit2gtk-4.1-dev \
+            squashfs-tools \
+            rpm \
+            patchelf \
+            binutils
+
+      - name: Install PNPM frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend bundle
+        run: pnpm build
+
+      - name: Build native Release binary
+        run: |
+          cd src-tauri
+          cargo build --release --locked
+
+      - name: Package Standalone Tarball (with desktop entry, icon, installer)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="${{ github.event.inputs.tag }}"
+          VERSION="${VERSION#v}"
+          
+          PKG_DIR="sharel-${VERSION}-linux-x86_64"
+          mkdir -p "${PKG_DIR}"
+          cp src-tauri/target/release/sharel "${PKG_DIR}/"
+          cp sharel-logo.svg "${PKG_DIR}/"
+          cp install.sh "${PKG_DIR}/"
+          cp README.md "${PKG_DIR}/"
+          
+          cat << 'EOF' > "${PKG_DIR}/sharel.desktop"
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=ShareL
+          GenericName=Screen Capture and Recording
+          Comment=Wayland Native Screen Capture, Studio Recording and ShareX Hub
+          Exec=sharel %U
+          Icon=sharel
+          Terminal=false
+          StartupNotify=true
+          Categories=Utility;Graphics;AudioVideo;Recorder;
+          Keywords=screenshot;screen;capture;sharex;recorder;gif;wayland;
+          MimeType=image/png;image/jpeg;image/webp;image/gif;video/mp4;video/webm;
+          StartupWMClass=ShareL
+          Actions=CaptureRegion;CaptureFullscreen;OpenStudio;
+          
+          [Desktop Action CaptureRegion]
+          Name=Capture Region
+          Exec=sharel capture region
+          
+          [Desktop Action CaptureFullscreen]
+          Name=Capture Fullscreen
+          Exec=sharel capture fullscreen
+          
+          [Desktop Action OpenStudio]
+          Name=Recording Studio
+          Exec=sharel record
+          EOF
+
+          tar -czvf "sharel-linux-x86_64.tar.gz" "${PKG_DIR}"
+          cp src-tauri/target/release/sharel "sharel"
+
+      - name: Build Debian Package (.deb)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="${{ github.event.inputs.tag }}"
+          VERSION="${VERSION#v}"
+          
+          DEB_ROOT="deb_root"
+          mkdir -p "${DEB_ROOT}/DEBIAN"
+          mkdir -p "${DEB_ROOT}/usr/bin"
+          mkdir -p "${DEB_ROOT}/usr/share/applications"
+          mkdir -p "${DEB_ROOT}/usr/share/icons/hicolor/scalable/apps"
+
+          cp src-tauri/target/release/sharel "${DEB_ROOT}/usr/bin/sharel"
+          chmod 755 "${DEB_ROOT}/usr/bin/sharel"
+          cp sharel-logo.svg "${DEB_ROOT}/usr/share/icons/hicolor/scalable/apps/sharel.svg"
+
+          cat << 'EOF' > "${DEB_ROOT}/usr/share/applications/sharel.desktop"
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=ShareL
+          GenericName=Screen Capture and Recording
+          Comment=Wayland Native Screen Capture, Studio Recording and ShareX Hub
+          Exec=/usr/bin/sharel %U
+          Icon=sharel
+          Terminal=false
+          StartupNotify=true
+          Categories=Utility;Graphics;AudioVideo;Recorder;
+          Keywords=screenshot;screen;capture;sharex;recorder;gif;wayland;
+          StartupWMClass=ShareL
+          EOF
+
+          cat << EOF > "${DEB_ROOT}/DEBIAN/control"
+          Package: sharel
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: ShareL Contributors <https://github.com/44tl/ShareL>
+          Description: High Performance Screen Capture, Studio Recording and ShareX Destination Hub for Linux (Wayland)
+          Depends: libwebkit2gtk-4.1-0, libayatana-appindicator3-1, libssl3, ffmpeg, grim, slurp, wl-clipboard
+          EOF
+
+          dpkg-deb --build "${DEB_ROOT}" "sharel_${VERSION}_amd64.deb"
+
+      - name: Generate SHA256 Checksums
+        run: |
+          sha256sum sharel-linux-x86_64.tar.gz sharel sharel_*_amd64.deb > SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ShareL ${{ github.ref_name || github.event.inputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            sharel-linux-x86_64.tar.gz
+            sharel
+            sharel_*_amd64.deb
+            SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

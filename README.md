@@ -143,6 +143,23 @@ sharel ocr /path/to/document.png
 
 # List all available custom uploaders
 sharel uploaders
+
+# Check for updates from GitHub
+sharel update --check
+
+# Install latest update automatically
+sharel update
+
+# Revert to previous backup or install a specific release version
+sharel rollback
+sharel revert v1.0.0
+
+# Ignore or unignore specific release versions
+sharel ignore-version 1.1.0
+sharel unignore-version 1.1.0
+
+# List available GitHub releases
+sharel releases
 ```
 
 ---

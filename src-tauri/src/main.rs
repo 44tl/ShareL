@@ -21,6 +21,11 @@ fn print_help() {
     println!("  upload, -u [FILE]         Upload a file to the active or specified destination");
     println!("  ocr [FILE]                Extract text from an image using OCR");
     println!("  uploaders, -l             List all configured ShareX upload destinations");
+    println!("  update [--check]          Check for and install updates from GitHub");
+    println!("  revert, rollback [VER]    Rollback to previous version or install a specific release tag");
+    println!("  ignore-version [VER]      Ignore a specific release version from prompting");
+    println!("  unignore-version [VER]    Remove a version from the ignore list");
+    println!("  versions, releases        List available ShareL releases on GitHub");
     println!("  info, doctor              Display detected Wayland compositor and capture backends");
     println!("  help, -h, --help          Print this help message\n");
     println!("CAPTURE OPTIONS:");
@@ -361,6 +366,124 @@ async fn run_cli(args: Vec<String>) {
                 }
                 Err(e) => {
                     eprintln!("Capture failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "update" | "upgrade" => {
+            let check_only = args.iter().any(|a| a == "--check" || a == "-c");
+            println!("Checking for updates on GitHub (44tl/ShareL)...");
+            match sharel_lib::updater::check_for_updates().await {
+                Ok(info) => {
+                    println!("\n  Current Version:  v{}", info.current_version);
+                    println!("  Latest Version:   v{}", info.latest_version);
+                    if info.is_ignored {
+                        println!("  Status:           Ignored by user setting");
+                    }
+                    if info.has_update {
+                        println!("\n🎉 New version v{} is available!", info.latest_version);
+                        println!("Release Title: {}\n", info.release_name);
+                        if !info.release_notes.is_empty() {
+                            println!("Changelog:\n--------------------------------------------------");
+                            println!("{}", info.release_notes);
+                            println!("--------------------------------------------------");
+                        }
+                        if check_only {
+                            println!("\nRun 'sharel update' to install this update.");
+                        } else {
+                            println!("\nDownloading and installing update...");
+                            match sharel_lib::updater::install_update_with_progress(None, None).await {
+                                Ok(msg) => {
+                                    println!("✓ {}", msg);
+                                    println!("Update complete. Please restart ShareL.");
+                                }
+                                Err(e) => {
+                                    eprintln!("✗ Failed to install update: {}", e);
+                                    std::process::exit(1);
+                                }
+                            }
+                        }
+                    } else {
+                        println!("\n✓ ShareL is already up to date.");
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to check updates: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "revert" | "rollback" => {
+            let specific_tag = args.get(2);
+            if let Some(tag) = specific_tag {
+                println!("Installing specific release version '{}'...", tag);
+                match sharel_lib::updater::install_specific_release_tag(None, tag).await {
+                    Ok(msg) => {
+                        println!("✓ {}", msg);
+                        println!("Reverted successfully. Please restart ShareL.");
+                    }
+                    Err(e) => {
+                        eprintln!("✗ Revert failed: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                println!("Rolling back to previous backup binary...");
+                match sharel_lib::updater::rollback_to_previous_version().await {
+                    Ok(res) => {
+                        println!("✓ {}", res.message);
+                        println!("Rollback complete. Please restart ShareL.");
+                    }
+                    Err(e) => {
+                        eprintln!("✗ Rollback failed: {}", e);
+                        println!("Tip: You can specify a version tag directly: sharel revert v1.0.0");
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+        "ignore-version" => {
+            let ver = match args.get(2) {
+                Some(v) => v,
+                None => {
+                    eprintln!("Error: Specify a version to ignore. Example: sharel ignore-version 1.1.0");
+                    std::process::exit(1);
+                }
+            };
+            if let Err(e) = sharel_lib::updater::ignore_version(ver.clone()) {
+                eprintln!("Failed to ignore version: {}", e);
+                std::process::exit(1);
+            }
+            println!("✓ Version v{} added to ignored versions list.", ver.trim_start_matches('v'));
+        }
+        "unignore-version" => {
+            let ver = match args.get(2) {
+                Some(v) => v,
+                None => {
+                    eprintln!("Error: Specify a version to unignore. Example: sharel unignore-version 1.1.0");
+                    std::process::exit(1);
+                }
+            };
+            if let Err(e) = sharel_lib::updater::unignore_version(ver.clone()) {
+                eprintln!("Failed to unignore version: {}", e);
+                std::process::exit(1);
+            }
+            println!("✓ Version v{} removed from ignored versions list.", ver.trim_start_matches('v'));
+        }
+        "versions" | "releases" => {
+            println!("Fetching recent releases from GitHub...");
+            match sharel_lib::updater::fetch_github_releases().await {
+                Ok(releases) => {
+                    println!("\nAvailable Releases ({}):", releases.len());
+                    for r in releases {
+                        let date = r.published_at.as_deref().unwrap_or("unknown");
+                        let title = r.name.as_deref().unwrap_or(&r.tag_name);
+                        println!("  • {:<10} {:<30} ({})", r.tag_name, title, date);
+                    }
+                    println!("\nTip: To revert to any version, run: sharel revert <TAG>");
+                }
+                Err(e) => {
+                    eprintln!("Failed to fetch releases: {}", e);
                     std::process::exit(1);
                 }
             }

@@ -9,16 +9,21 @@ import { HistoryGallery } from './components/HistoryGallery';
 import { ToolsPanel } from './components/ToolsPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { UploadNotifications } from './components/UploadNotifications';
+import { UpdateModal } from './components/UpdateModal';
 import {
   AppConfig,
   CaptureResult,
+  CheckUpdateResult,
   CustomUploaderConfig,
   HistoryItem,
   OcrResult,
   RecordingOptions,
   RecordingResult,
   RecordingStatus,
+  ReleaseInfo,
+  RollbackResult,
   SystemEnvironmentInfo,
+  UpdateProgressEvent,
   UploadJob,
   UploadJobCompleteEvent,
   UploadJobProgressEvent,
@@ -47,6 +52,13 @@ export const App: React.FC = () => {
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
   const uploadJobsRef = useRef<UploadJob[]>([]);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Update System State
+  const [updateInfo, setUpdateInfo] = useState<CheckUpdateResult | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [isInstallingUpdate, setIsInstallingUpdate] = useState<boolean>(false);
+  const [installProgress, setInstallProgress] = useState<UpdateProgressEvent | null>(null);
+  const [availableReleases, setAvailableReleases] = useState<ReleaseInfo[]>([]);
 
   const showToast = (text: string, type: 'info' | 'success' | 'error' = 'info') => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -80,10 +92,98 @@ export const App: React.FC = () => {
       setUploaders(uploaderList);
 
       await refreshHistory();
+
+      // Check for available updates
+      try {
+        const update = await invokeCommand<CheckUpdateResult>('check_for_updates_cmd');
+        setUpdateInfo(update);
+        if (update.has_update && !update.is_ignored && cfg.check_updates_on_startup !== false) {
+          setIsUpdateModalOpen(true);
+        }
+        const rels = await invokeCommand<ReleaseInfo[]>('list_available_releases_cmd');
+        setAvailableReleases(rels);
+      } catch {}
     } catch (err) {
       showToast(String(err), 'error');
     }
   }, [refreshHistory]);
+
+  const handleManualCheckUpdates = async () => {
+    try {
+      const update = await invokeCommand<CheckUpdateResult>('check_for_updates_cmd');
+      setUpdateInfo(update);
+      const rels = await invokeCommand<ReleaseInfo[]>('list_available_releases_cmd');
+      setAvailableReleases(rels);
+      if (update.has_update) {
+        setIsUpdateModalOpen(true);
+      } else {
+        showToast('ShareL is already up to date!', 'success');
+      }
+    } catch (err) {
+      showToast(`Failed to check updates: ${err}`, 'error');
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    setIsInstallingUpdate(true);
+    try {
+      const res = await invokeCommand<string>('install_update_cmd');
+      showToast(res || 'Update installed successfully!', 'success');
+      setIsUpdateModalOpen(false);
+    } catch (err) {
+      showToast(`Update failed: ${err}`, 'error');
+    } finally {
+      setIsInstallingUpdate(false);
+    }
+  };
+
+  const handleIgnoreVersion = async (version: string) => {
+    try {
+      await invokeCommand('ignore_version_cmd', { version });
+      showToast(`Version v${version.replace(/^v/, '')} will be ignored.`, 'info');
+      setIsUpdateModalOpen(false);
+      const cfg = await invokeCommand<AppConfig>('get_app_config');
+      setConfig(cfg);
+      if (updateInfo) {
+        setUpdateInfo({ ...updateInfo, is_ignored: true });
+      }
+    } catch (err) {
+      showToast(`Failed to ignore version: ${err}`, 'error');
+    }
+  };
+
+  const handleUnignoreVersion = async (ver: string) => {
+    try {
+      await invokeCommand('unignore_version_cmd', { version: ver });
+      showToast(`Version v${ver.replace(/^v/, '')} unignored.`, 'success');
+      const cfg = await invokeCommand<AppConfig>('get_app_config');
+      setConfig(cfg);
+      const update = await invokeCommand<CheckUpdateResult>('check_for_updates_cmd');
+      setUpdateInfo(update);
+    } catch (err) {
+      showToast(`Failed to unignore: ${err}`, 'error');
+    }
+  };
+
+  const handleRollback = async (versionTag?: string) => {
+    try {
+      if (versionTag) {
+        showToast(`Switching to release ${versionTag}...`, 'info');
+        const res = await invokeCommand<string>('install_version_tag_cmd', { tag: versionTag });
+        showToast(res || `Successfully switched to ${versionTag}`, 'success');
+      } else {
+        showToast('Rolling back to previous backup binary...', 'info');
+        const res = await invokeCommand<RollbackResult>('rollback_version_cmd');
+        if (res.success) {
+          showToast(res.message, 'success');
+        } else {
+          showToast(`Rollback failed: ${res.message}`, 'error');
+        }
+      }
+    } catch (err) {
+      showToast(`Rollback error: ${err}`, 'error');
+    }
+  };
 
   useEffect(() => {
     loadInitialData();
@@ -167,6 +267,21 @@ export const App: React.FC = () => {
               statusCode: p.status_code,
               durationMs: p.duration_ms,
             });
+          })
+        );
+
+        unlisteners.push(
+          await listen('update://available', (e) => {
+            const info = e.payload as CheckUpdateResult;
+            setUpdateInfo(info);
+            setIsUpdateModalOpen(true);
+          })
+        );
+
+        unlisteners.push(
+          await listen('update://progress', (e) => {
+            const prog = e.payload as UpdateProgressEvent;
+            setInstallProgress(prog);
           })
         );
 
@@ -645,6 +760,8 @@ export const App: React.FC = () => {
         onStopRecording={handleStopRecording}
         activeView={activeView}
         config={config}
+        updateInfo={updateInfo}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
       {recordingStatus.is_processing && (
@@ -806,8 +923,27 @@ export const App: React.FC = () => {
               config={config}
               environment={systemEnvironment}
               onUpdateConfig={handleUpdateConfig}
+              updateInfo={updateInfo}
+              onCheckForUpdates={handleManualCheckUpdates}
+              onTriggerUpdateModal={() => setIsUpdateModalOpen(true)}
+              onRollback={handleRollback}
+              availableReleases={availableReleases}
+              onUnignoreVersion={handleUnignoreVersion}
             />
           )}
+
+          <UpdateModal
+            isOpen={isUpdateModalOpen}
+            updateInfo={updateInfo}
+            onClose={() => setIsUpdateModalOpen(false)}
+            onInstallUpdate={handleInstallUpdate}
+            onIgnoreVersion={handleIgnoreVersion}
+            isInstalling={isInstallingUpdate}
+            installProgress={installProgress}
+            onOpenReleaseUrl={(url) => {
+              invokeCommand('open_link', { url });
+            }}
+          />
 
           {toastMessage && (
             <div

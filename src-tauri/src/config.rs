@@ -118,6 +118,18 @@ pub struct AppConfig {
     pub preferred_recording_backend: String,
     #[serde(default)]
     pub shortcuts: GlobalShortcuts,
+    #[serde(default = "default_bool_true")]
+    pub check_updates_on_startup: bool,
+    #[serde(default = "default_bool_true")]
+    pub auto_check_updates: bool,
+    #[serde(default)]
+    pub ignored_versions: Vec<String>,
+    #[serde(default = "default_update_channel")]
+    pub update_channel: String,
+}
+
+fn default_update_channel() -> String {
+    "stable".to_string()
 }
 
 fn default_backend_auto() -> String {
@@ -192,6 +204,10 @@ impl Default for AppConfig {
             preferred_screenshot_backend: "auto".to_string(),
             preferred_recording_backend: "auto".to_string(),
             shortcuts: GlobalShortcuts::default(),
+            check_updates_on_startup: true,
+            auto_check_updates: true,
+            ignored_versions: Vec::new(),
+            update_channel: "stable".to_string(),
         }
     }
 }
