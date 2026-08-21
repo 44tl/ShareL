@@ -286,7 +286,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!loadedImage) return;
+    if (!loadedImage || activeTool === 'select') return;
     const coords = getCanvasCoords(e);
     setIsDrawing(true);
     setStartPos(coords);
@@ -440,6 +440,8 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
     newImg.onload = () => {
       setLoadedImage(newImg);
       setAnnotations([]);
+      setRedoStack([]);
+      setStepCount(1);
       setCropBox(null);
       setActiveTool('arrow');
     };

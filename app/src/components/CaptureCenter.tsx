@@ -20,7 +20,6 @@ interface CaptureCenterProps {
   onOpenImageInEditor: (dataUrl: string, filePath?: string) => void;
   lastCapture: CaptureResult | null;
   lastRecording: RecordingResult | null;
-  onCopyPath: (path: string) => void;
   onShowInFolder: (path: string) => void;
   environment?: SystemEnvironmentInfo | null;
   config?: AppConfig | null;

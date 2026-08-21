@@ -404,7 +404,8 @@ pub async fn execute_upload_with_progress(
     let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(600))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -487,8 +488,9 @@ pub async fn execute_upload_with_progress(
 
     let extracted_url = if let Some(pattern) = &uploader.url_pattern {
         let parsed = parse_pattern(pattern, &raw_text, json_val.as_ref(), &file_name, &resp_headers);
-        if !parsed.is_empty() {
-            Some(parsed)
+        let trimmed = parsed.trim();
+        if !trimmed.is_empty() {
+            Some(trimmed.to_string())
         } else {
             None
         }
@@ -498,8 +500,9 @@ pub async fn execute_upload_with_progress(
 
     let extracted_thumbnail = if let Some(pattern) = &uploader.thumbnail_url_pattern {
         let parsed = parse_pattern(pattern, &raw_text, json_val.as_ref(), &file_name, &resp_headers);
-        if !parsed.is_empty() {
-            Some(parsed)
+        let trimmed = parsed.trim();
+        if !trimmed.is_empty() {
+            Some(trimmed.to_string())
         } else {
             None
         }
@@ -509,8 +512,9 @@ pub async fn execute_upload_with_progress(
 
     let extracted_deletion = if let Some(pattern) = &uploader.deletion_url_pattern {
         let parsed = parse_pattern(pattern, &raw_text, json_val.as_ref(), &file_name, &resp_headers);
-        if !parsed.is_empty() {
-            Some(parsed)
+        let trimmed = parsed.trim();
+        if !trimmed.is_empty() {
+            Some(trimmed.to_string())
         } else {
             None
         }
@@ -521,7 +525,12 @@ pub async fn execute_upload_with_progress(
     let extracted_error = if status >= 400 {
         if let Some(pattern) = &uploader.error_message_pattern {
             let parsed = parse_pattern(pattern, &raw_text, json_val.as_ref(), &file_name, &resp_headers);
-            Some(parsed)
+            let trimmed = parsed.trim();
+            Some(if trimmed.is_empty() {
+                format!("Server returned HTTP status {}", status)
+            } else {
+                trimmed.to_string()
+            })
         } else {
             Some(format!("Server returned HTTP status {}", status))
         }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Plus,
   Trash2,
@@ -53,6 +53,13 @@ export const DestinationsManager: React.FC<DestinationsManagerProps> = ({
   const [testResult, setTestResult] = useState<UploadResult | null>(null);
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'request' | 'response' | 'test'>('request');
+
+  useEffect(() => {
+    setSelectedUploader((prev) => {
+      if (uploaders.some((u) => u.id === prev.id)) return prev;
+      return uploaders.find((u) => u.id === activeUploaderId) || uploaders[0] || prev;
+    });
+  }, [uploaders, activeUploaderId]);
 
   const handleUpdateField = <K extends keyof CustomUploaderConfig>(
     field: K,

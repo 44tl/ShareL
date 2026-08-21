@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import {
   Pipette,
   Ruler,
@@ -29,6 +30,26 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
   const [ocrError, setOcrError] = useState<string | null>(null);
 
   const [qrInput, setQrInput] = useState<string>('https://github.com/44tl/ShareL');
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [qrError, setQrError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    QRCode.toDataURL(qrInput || 'ShareL', { width: 360, margin: 1, errorCorrectionLevel: 'M' })
+      .then((url) => {
+        if (!alive) return;
+        setQrDataUrl(url);
+        setQrError(null);
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        setQrDataUrl('');
+        setQrError(err instanceof Error ? err.message : 'Failed to generate QR code');
+      });
+    return () => {
+      alive = false;
+    };
+  }, [qrInput]);
 
   const [rulerWidth, setRulerWidth] = useState<number>(640);
   const [rulerHeight, setRulerHeight] = useState<number>(480);
@@ -396,18 +417,31 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
             <div
               style={{
                 display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
                 justifyContent: 'center',
+                gap: '8px',
                 padding: '20px',
                 backgroundColor: '#ffffff',
                 borderRadius: 'var(--radius-md)',
-                alignSelf: 'center',
+                alignSelf: 'stretch',
+                minHeight: '220px',
               }}
             >
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrInput || 'ShareL')}`}
-                alt="QR Code"
-                style={{ width: '180px', height: '180px' }}
-              />
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt="QR Code"
+                  style={{ width: '180px', height: '180px' }}
+                />
+              ) : (
+                <span style={{ fontSize: '12px', color: '#5f6368' }}>
+                  {qrError || 'Enter content to generate a QR code'}
+                </span>
+              )}
+              <span style={{ fontSize: '10px', color: '#9aa0a6' }}>
+                Generated locally - nothing leaves this device
+              </span>
             </div>
           </div>
         </div>

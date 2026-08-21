@@ -25,6 +25,7 @@ import {
   UploadJobStartEvent,
   UploadResult,
 } from './types';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { invokeCommand } from './lib/tauri';
 
 export const App: React.FC = () => {
@@ -45,11 +46,14 @@ export const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null);
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
   const uploadJobsRef = useRef<UploadJob[]>([]);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (text: string, type: 'info' | 'success' | 'error' = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToastMessage({ text, type });
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToastMessage(null);
+      toastTimerRef.current = null;
     }, 4000);
   };
 
@@ -241,7 +245,7 @@ export const App: React.FC = () => {
   }, [refreshHistory]);
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (recordingStatus.is_recording) {
       interval = setInterval(async () => {
         try {
@@ -529,7 +533,6 @@ export const App: React.FC = () => {
         parsed.id = 'imported_' + Date.now();
       }
       await handleSaveUploader(parsed);
-      showToast(`Imported ShareX destination: ${parsed.Name}`, 'success');
     } catch (err) {
       showToast(`Failed to parse .sxcu file: ${err}`, 'error');
     }
@@ -591,7 +594,11 @@ export const App: React.FC = () => {
 
   const handleOpenInEditor = (filePath: string) => {
     setEditorFilePath(filePath);
-    setEditorImageSrc(`asset://${filePath}`);
+    setEditorImageSrc(
+      typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+        ? convertFileSrc(filePath)
+        : filePath
+    );
     setActiveView('editor');
   };
 
@@ -717,7 +724,6 @@ export const App: React.FC = () => {
               }}
               lastCapture={lastCapture}
               lastRecording={lastRecording}
-              onCopyPath={(p) => handleCopyText(p)}
               onShowInFolder={handleShowInFolder}
               environment={systemEnvironment}
               config={config}

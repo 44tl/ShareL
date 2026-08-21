@@ -215,10 +215,44 @@ async fn capture_with_xdg_portal(interactive: bool, target_path: &Path) -> Resul
     }
 }
 
+fn find_newest_recent_screenshot(after: std::time::SystemTime) -> Option<PathBuf> {
+    let mut search_dirs: Vec<PathBuf> = Vec::new();
+    if let Some(pics) = dirs::picture_dir() {
+        search_dirs.push(pics.join("Screenshots"));
+        search_dirs.push(pics);
+    }
+
+    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+    for dir in search_dirs {
+        let entries = match fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let ext_ok = matches!(
+                path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase()).as_deref(),
+                Some("png") | Some("jpg") | Some("jpeg")
+            );
+            if !ext_ok {
+                continue;
+            }
+            if let Ok(meta) = entry.metadata() {
+                if let Ok(modified) = meta.modified() {
+                    if modified >= after && best.as_ref().map(|(t, _)| modified > *t).unwrap_or(true) {
+                        best = Some((modified, path));
+                    }
+                }
+            }
+        }
+    }
+    best.map(|(_, p)| p)
+}
+
 async fn capture_with_compositor_native(
     compositor: &CompositorKind,
     mode: &CaptureMode,
-    _target_path: &Path,
+    target_path: &Path,
 ) -> Result<(), String> {
     match compositor {
         CompositorKind::Niri => {
@@ -228,13 +262,27 @@ async fn capture_with_compositor_native(
                 CaptureMode::Fullscreen | CaptureMode::ActiveScreen => "screenshot-screen",
             };
 
+            // Niri writes to its own configured screenshot-path; remember when we
+            // started so we can locate the freshly written file afterwards.
+            let started = std::time::SystemTime::now()
+                .checked_sub(std::time::Duration::from_secs(2))
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
             let out = Command::new("niri")
                 .args(["msg", "action", action])
                 .output()
                 .map_err(|e| format!("Failed to invoke niri msg: {}", e))?;
 
             if out.status.success() {
-                return Ok(());
+                if let Some(shot) = find_newest_recent_screenshot(started) {
+                    if let Some(parent) = target_path.parent() {
+                        fs::create_dir_all(parent).ok();
+                    }
+                    if fs::copy(&shot, target_path).is_ok() && target_path.exists() {
+                        return Ok(());
+                    }
+                }
+                return Err("Niri screenshot action succeeded but no new screenshot file was found".to_string());
             }
             Err("Niri screenshot action returned error".to_string())
         }
@@ -265,36 +313,46 @@ pub async fn take_screenshot_with_backend(
 
     if (pref == "grim_slurp" || pref == "auto") && backends.grim && (backends.slurp || !interactive) {
         if let Ok(()) = capture_with_grim_slurp(&mode, &target_path).await {
-            used_backend = "grim/slurp".to_string();
-            captured = true;
+            if target_path.exists() {
+                used_backend = "grim/slurp".to_string();
+                captured = true;
+            }
         }
     }
 
     if !captured && (pref == "xdg_desktop_portal" || pref == "auto") && backends.xdg_desktop_portal {
         if let Ok(()) = capture_with_xdg_portal(interactive, &target_path).await {
-            used_backend = "xdg-desktop-portal".to_string();
-            captured = true;
+            if target_path.exists() {
+                used_backend = "xdg-desktop-portal".to_string();
+                captured = true;
+            }
         }
     }
 
     if !captured && (pref == "compositor" || pref == "auto") && backends.compositor_integration {
         if let Ok(()) = capture_with_compositor_native(&compositor, &mode, &target_path).await {
-            used_backend = format!("{}-native", backends.compositor_cli_name.unwrap_or_else(|| "compositor".to_string()));
-            captured = true;
+            if target_path.exists() {
+                used_backend = format!("{}-native", backends.compositor_cli_name.unwrap_or_else(|| "compositor".to_string()));
+                captured = true;
+            }
         }
     }
 
     if !captured && std::env::var("WAYLAND_DISPLAY").is_ok() && backends.grim {
         if let Ok(()) = capture_with_grim_slurp(&mode, &target_path).await {
-            used_backend = "grim/slurp".to_string();
-            captured = true;
+            if target_path.exists() {
+                used_backend = "grim/slurp".to_string();
+                captured = true;
+            }
         }
     }
 
     if !captured {
         if let Ok(()) = capture_with_xdg_portal(interactive, &target_path).await {
-            used_backend = "xdg-desktop-portal".to_string();
-            captured = true;
+            if target_path.exists() {
+                used_backend = "xdg-desktop-portal".to_string();
+                captured = true;
+            }
         }
     }
 

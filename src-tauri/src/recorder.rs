@@ -22,6 +22,20 @@ pub struct RecordingState {
     pub codec: String,
     pub auto_upload: bool,
     pub temp_video_path: Option<PathBuf>,
+    pub paused_at: Option<i64>,
+    pub paused_seconds_total: i64,
+}
+
+impl RecordingState {
+    /// Elapsed recording time excluding any periods spent paused.
+    fn effective_duration_seconds(&self) -> i64 {
+        let now = Local::now().timestamp();
+        let mut elapsed = now - self.start_time;
+        if let Some(paused_at) = self.paused_at {
+            elapsed -= (now - paused_at).max(0);
+        }
+        (elapsed - self.paused_seconds_total).max(0)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -259,12 +273,11 @@ pub fn parse_filename_template(template: &str, format: &str, fps: u32, codec: &s
 pub fn get_recording_status() -> RecordingStatus {
     let state = RECORDING_PROCESS.lock().unwrap();
     if let Some(ref r) = *state {
-        let duration = (Local::now().timestamp() - r.start_time).max(0) as u64;
         RecordingStatus {
             is_recording: true,
             is_paused: r.is_paused,
             is_processing: false,
-            duration_seconds: duration,
+            duration_seconds: r.effective_duration_seconds() as u64,
             output_path: Some(r.output_path.to_string_lossy().to_string()),
             format: Some(r.format.clone()),
             backend: Some(r.backend.clone()),
@@ -307,6 +320,7 @@ pub fn pause_recording() -> Result<(), String> {
             }
         }
         state.is_paused = true;
+        state.paused_at = Some(Local::now().timestamp());
         Ok(())
     } else {
         Err("No active recording to pause".to_string())
@@ -330,6 +344,9 @@ pub fn resume_recording() -> Result<(), String> {
             }
         }
         state.is_paused = false;
+        if let Some(paused_at) = state.paused_at.take() {
+            state.paused_seconds_total += (Local::now().timestamp() - paused_at).max(0);
+        }
         Ok(())
     } else {
         Err("No active recording to resume".to_string())
@@ -418,7 +435,15 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
     let pref = options.preferred_backend.as_deref().unwrap_or("auto");
     let bitrate_kbps = options.bitrate_kbps.unwrap_or(8000);
 
-    let should_include_audio = options.record_microphone || options.record_system_audio || options.audio_source.as_deref().unwrap_or("none") != "none";
+    let normalized_audio_source = match options.audio_source.as_deref() {
+        Some("mic") | Some("input") => Some("microphone".to_string()),
+        Some("desktop") | Some("output") | Some("system_audio") => Some("system".to_string()),
+        _ => options.audio_source.clone(),
+    };
+    let audio_source = normalized_audio_source.as_deref();
+
+    let should_include_audio =
+        options.record_microphone || options.record_system_audio || audio_source.unwrap_or("none") != "none";
 
     let (child, backend_name) = if (pref == "gpu-screen-recorder" || (pref == "auto" && has_gpu_recorder)) && has_gpu_recorder {
         let mut cmd = Command::new("gpu-screen-recorder");
@@ -476,9 +501,9 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
 
         if options.record_system_audio && options.record_microphone {
             cmd.arg("-a").arg("default_output").arg("-a").arg("default_input");
-        } else if options.record_microphone || options.audio_source.as_deref() == Some("microphone") {
+        } else if options.record_microphone || audio_source == Some("microphone") {
             cmd.arg("-a").arg("default_input");
-        } else if options.record_system_audio || options.audio_source.as_deref() == Some("system") || should_include_audio {
+        } else if options.record_system_audio || audio_source == Some("system") || should_include_audio {
             cmd.arg("-a").arg("default_output");
         }
 
@@ -584,6 +609,8 @@ pub fn start_recording_advanced(options: RecordingOptions) -> Result<(), String>
         codec: raw_codec,
         auto_upload: options.auto_upload,
         temp_video_path,
+        paused_at: None,
+        paused_seconds_total: 0,
     });
 
     Ok(())
@@ -596,13 +623,15 @@ pub fn start_recording(
     include_audio: bool,
     region: Option<String>,
     preferred_backend: Option<&str>,
+    codec: Option<String>,
+    bitrate_kbps: Option<u32>,
 ) -> Result<(), String> {
     start_recording_advanced(RecordingOptions {
         recordings_dir: recordings_dir.to_string(),
         format: format.to_string(),
         fps,
-        bitrate_kbps: Some(8000),
-        codec: Some("h264".to_string()),
+        bitrate_kbps,
+        codec,
         audio_source: if include_audio { Some("system".to_string()) } else { Some("none".to_string()) },
         record_microphone: false,
         record_system_audio: include_audio,
@@ -692,7 +721,7 @@ pub fn stop_recording_process() -> Result<StoppedRecordingState, String> {
         }
     }
 
-    let duration = (Local::now().timestamp() - state.start_time).max(1) as u64;
+    let duration = state.effective_duration_seconds().max(1) as u64;
 
     Ok(StoppedRecordingState {
         id: uuid::Uuid::new_v4().to_string(),

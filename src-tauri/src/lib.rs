@@ -297,6 +297,8 @@ fn start_screen_recording(format: String, fps: u32, include_audio: bool) -> Resu
         include_audio,
         None,
         Some(&cfg.preferred_recording_backend),
+        Some(cfg.recording_codec.clone()),
+        Some(cfg.recording_bitrate_kbps),
     )
 }
 

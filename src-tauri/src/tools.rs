@@ -65,7 +65,45 @@ pub fn save_annotated_image(
         fs::create_dir_all(parent).ok();
     }
 
-    fs::write(&out_path, bytes).map_err(|e| format!("Failed to write edited image: {}", e))?;
+    // Encode according to the final file's extension so contents always match
+    // the name: the editor exports PNG data URLs even when the configured
+    // default format differs, and overwriting an original must keep its ext.
+    let ext_format = out_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_else(|| format.to_lowercase());
+
+    match ext_format.as_str() {
+        "jpg" | "jpeg" | "webp" => {
+            // Re-encode so file contents match the target extension instead of
+            // writing PNG bytes under a wrong name.
+            let img = image::load_from_memory(&bytes).map_err(|e| format!("Invalid image data: {}", e))?;
+            let encoded: Vec<u8> = match ext_format.as_str() {
+                "webp" => {
+                    let mut buf = Vec::new();
+                    let mut cursor = std::io::Cursor::new(&mut buf);
+                    let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut cursor);
+                    img.to_rgba8()
+                        .write_with_encoder(encoder)
+                        .map_err(|e| format!("WebP encode error: {}", e))?;
+                    buf
+                }
+                _ => {
+                    let mut buf = Vec::new();
+                    let mut cursor = std::io::Cursor::new(&mut buf);
+                    let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, 92);
+                    img.to_rgb8()
+                        .write_with_encoder(encoder)
+                        .map_err(|e| format!("JPEG encode error: {}", e))?;
+                    buf
+                }
+            };
+            fs::write(&out_path, encoded).map_err(|e| format!("Failed to write edited image: {}", e))?;
+        }
+        _ => fs::write(&out_path, bytes).map_err(|e| format!("Failed to write edited image: {}", e))?,
+    }
+
     Ok(out_path.to_string_lossy().to_string())
 }
 
@@ -93,7 +131,7 @@ pub fn show_in_folder(path: &str) -> Result<(), String> {
                 "/org/freedesktop/FileManager1",
                 "org.freedesktop.FileManager1.ShowItems",
                 &format!("array:string:{}", uri),
-                "string:\"\"",
+                "string:",
             ])
             .output()
         {

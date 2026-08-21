@@ -196,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--md-sys-color-surface-container)')}
         >
           <Video size={15} color={recordingStatus.is_recording ? '#ffffff' : 'var(--md-sys-color-primary)'} />
-          <span>{recordingStatus.is_recording ? 'Stop Recording' : 'Record GIF'}</span>
+          <span>{recordingStatus.is_recording ? 'Stop Recording' : `Record ${(config?.default_recording_format || 'mp4').toUpperCase()}`}</span>
         </button>
 
         <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--md-sys-color-outline-variant)', margin: '0 4px' }} />
