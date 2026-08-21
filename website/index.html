@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShareL</title>
+  <title>ShareL — Wayland Screen Capture &amp; Recording</title>
   <meta name="description"
-    content="Linux-native screen capture and recording utility with full ShareX (.sxcu) support, instant annotations, and first-class Wayland compositor detection.">
+    content="Fast, lightweight screen capture, video recording, and ShareX destination hub built natively for Linux Wayland.">
   <link rel="icon" type="image/svg+xml" href="sharel-logo.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,14 +15,14 @@
   <header>
     <div class="container nav-container">
       <a href="#" class="logo-group">
-        <img src="sharel-logo.svg" alt="ShareL Logo" width="28" height="28">
+        <img src="sharel-logo.svg" alt="ShareL" width="28" height="28">
         <span class="brand-name">ShareL</span>
       </a>
 
       <nav class="nav-links">
         <a href="#features">Features</a>
-        <a href="#compositors">Wayland Support</a>
-        <a href="#cli">CLI &amp; Keybindings</a>
+        <a href="#compositors">Wayland</a>
+        <a href="#cli">CLI &amp; Shortcuts</a>
         <a href="#install">Install</a>
       </nav>
 
@@ -34,7 +34,7 @@
           </svg>
           <span>GitHub</span>
         </a>
-        <a href="#install" class="btn btn-primary">Install</a>
+        <a href="#install" class="btn btn-primary">Get ShareL</a>
       </div>
     </div>
   </header>
@@ -42,17 +42,19 @@
   <main>
     <section class="hero">
       <div class="container hero-container">
+        <div class="hero-badge">
+          <span>Linux Wayland First</span> • <strong>ShareX Compatible</strong>
+        </div>
+
         <h1>Screen capture on Linux,<br><span>done right.</span></h1>
 
         <p class="hero-subtitle">
-          Lightning-fast screen capture, automated workflows, rich annotation editor, and full ShareX custom uploader
-          support across all modern Wayland compositors.
+          Pixel-perfect screenshots, 60/120 FPS hardware-accelerated recordings, instant annotation editing, and `.sxcu` custom uploader integrations.
         </p>
 
         <div class="install-bar">
           <span class="prompt">$</span>
-          <span class="cmd" id="installCmd">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh |
-            bash</span>
+          <span class="cmd" id="installCmd">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash</span>
           <button class="copy-btn" id="copyBtn" onclick="copyInstallCmd()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
@@ -68,7 +70,7 @@
               <span class="dot red"></span>
               <span class="dot yellow"></span>
               <span class="dot green"></span>
-              <span class="window-title">Interactive Annotation Canvas</span>
+              <span class="window-title">Live Annotation Canvas</span>
             </div>
 
             <div class="canvas-tools">
@@ -82,8 +84,8 @@
           </div>
 
           <div class="canvas-wrap">
-            <canvas id="interactiveCanvas" width="900" height="360"></canvas>
-            <div class="canvas-hint">Click and drag inside the frame to test drawing annotations live</div>
+            <canvas id="interactiveCanvas" width="900" height="340"></canvas>
+            <div class="canvas-hint">Click and drag inside frame to test annotations</div>
           </div>
         </div>
       </div>
@@ -91,34 +93,14 @@
 
     <section id="compositors" class="compositors-bar">
       <div class="container">
-        <div class="compositors-header">
-          <span>First-class Compositor &amp; Backend Support</span>
-        </div>
+        <div class="compositors-header">Compositor &amp; Environment Compatibility</div>
         <div class="compositors-tags">
-          <div class="comp-badge">
-            <strong>Niri</strong>
-            <span>Scrollable Tiling</span>
-          </div>
-          <div class="comp-badge">
-            <strong>Hyprland</strong>
-            <span>Dynamic Tiling</span>
-          </div>
-          <div class="comp-badge">
-            <strong>Sway</strong>
-            <span>i3 Wayland</span>
-          </div>
-          <div class="comp-badge">
-            <strong>GNOME</strong>
-            <span>Mutter Portal</span>
-          </div>
-          <div class="comp-badge">
-            <strong>KDE Plasma</strong>
-            <span>KWin Portal</span>
-          </div>
-          <div class="comp-badge">
-            <strong>COSMIC</strong>
-            <span>Pop!_OS / Rust</span>
-          </div>
+          <div class="comp-badge"><strong>Niri</strong><span>Scrollable Tiling</span></div>
+          <div class="comp-badge"><strong>Hyprland</strong><span>Dynamic Tiling</span></div>
+          <div class="comp-badge"><strong>Sway</strong><span>i3 Wayland</span></div>
+          <div class="comp-badge"><strong>GNOME</strong><span>Mutter Portal</span></div>
+          <div class="comp-badge"><strong>KDE Plasma</strong><span>KWin Portal</span></div>
+          <div class="comp-badge"><strong>COSMIC</strong><span>Pop!_OS / Rust</span></div>
         </div>
       </div>
     </section>
@@ -126,65 +108,61 @@
     <section id="features" class="features-section">
       <div class="container">
         <div class="section-heading">
-          <h2>Engineered for Power Users</h2>
-          <p>A unified suite designed for speed, flexibility, and automation.</p>
+          <h2>Core Capabilities</h2>
+          <p>Everything you need for daily screen capture, recording, and sharing.</p>
         </div>
 
         <div class="compact-grid">
           <div class="feature-item">
             <div class="feature-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect width="18" height="18" x="3" y="3" rx="2" />
                 <path d="m9 9 6 6m0-6-6 6" />
               </svg>
             </div>
             <div>
-              <h3>ShareX (.sxcu) Uploader Engine</h3>
-              <p>Import and execute existing ShareX destination files directly. Full support for multipart form data,
-                JSON payloads, headers, regexes, and custom vanity domain prefixes.</p>
+              <h3>ShareX (.sxcu) Destinations</h3>
+              <p>Import `.sxcu` files directly. Supports multipart form data, JSON payloads, headers, regexes, and vanity domain mappings.</p>
             </div>
           </div>
 
           <div class="feature-item">
             <div class="feature-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="12 2 2 7 12 12 22 7 12 2" />
                 <polyline points="2 17 12 22 22 17" />
                 <polyline points="2 12 12 17 22 12" />
               </svg>
             </div>
             <div>
-              <h3>Multi-Backend Wayland Routing</h3>
-              <p>Intelligently switches between XDG Desktop Portal, direct grim/slurp, gpu-screen-recorder
-                (NVENC/VAAPI), wf-recorder, and native compositor IPC.</p>
+              <h3>Intelligent Wayland Router</h3>
+              <p>Automatically selects the fastest capture pipeline between XDG Desktop Portal, direct `grim`/`slurp`, and compositor IPC.</p>
             </div>
           </div>
 
           <div class="feature-item">
             <div class="feature-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="23 7 16 12 23 17 23 7" />
                 <rect width="15" height="14" x="1" y="5" rx="2" ry="2" />
               </svg>
             </div>
             <div>
-              <h3>Optimized GIF &amp; MP4 Studio</h3>
-              <p>Capture regional or full-screen videos with 60 FPS recording and two-pass optimal palette generation
-                for crisp, artifact-free GIFs.</p>
+              <h3>GPU Recording Studio</h3>
+              <p>Smooth 60/120 FPS recording via `gpu-screen-recorder` (NVENC / VAAPI) and `wf-recorder` for video and palette-optimized GIFs.</p>
             </div>
           </div>
 
           <div class="feature-item">
             <div class="feature-icon-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
               </svg>
             </div>
             <div>
-              <h3>Vector Annotations &amp; Obfuscation</h3>
-              <p>Add arrows, numbered sequence markers, freehand brushes, highlighters, text, and pixelation filters to
-                redact passwords and tokens before sharing.</p>
+              <h3>Annotations &amp; Privacy Redaction</h3>
+              <p>Add arrows, step markers, rectangles, freehand brush strokes, and pixelate credentials and tokens before sharing.</p>
             </div>
           </div>
         </div>
@@ -194,13 +172,13 @@
     <section id="cli" class="cli-section">
       <div class="container">
         <div class="section-heading">
-          <h2>Seamless Terminal &amp; Keybinding Integration</h2>
-          <p>Bind commands directly to your window manager shortcuts.</p>
+          <h2>Keybindings &amp; CLI Reference</h2>
+          <p>Easily bind ShareL to your window manager shortcuts or terminal scripts.</p>
         </div>
 
         <div class="cli-grid">
           <div class="code-card">
-            <div class="code-card-header">Niri Configuration (<code>~/.config/niri/config.kdl</code>)</div>
+            <div class="code-card-header">Niri Config (<code>~/.config/niri/config.kdl</code>)</div>
             <pre><code>binds {
     Print     { spawn "sharel" "capture" "region"; }
     Mod+Print { spawn "sharel" "capture" "region" "--upload"; }
@@ -209,12 +187,12 @@
           </div>
 
           <div class="code-card">
-            <div class="code-card-header">Hyprland &amp; Sway Shortcuts</div>
-            <pre><code># Hyprland (hyprland.conf)
+            <div class="code-card-header">Hyprland &amp; Sway Config</div>
+            <pre><code># Hyprland
 bind = , Print, exec, sharel capture region
 bind = SUPER, Print, exec, sharel capture region --upload
 
-# Sway (config)
+# Sway
 bindsym Print exec sharel capture region</code></pre>
           </div>
         </div>
@@ -223,10 +201,10 @@ bindsym Print exec sharel capture region</code></pre>
 
     <section id="install" class="install-section">
       <div class="container install-wrap">
-        <h2>Get Started in Seconds</h2>
-        <p>Run the automated script to install ShareL and its dependencies on any Linux distribution.</p>
+        <h2>Install ShareL</h2>
+        <p>Run the single-line installer script to build or download the latest release.</p>
 
-        <div class="install-bar large">
+        <div class="install-bar">
           <span class="prompt">$</span>
           <span class="cmd">curl -sSL https://raw.githubusercontent.com/44tl/ShareL/main/install.sh | bash</span>
           <button class="copy-btn" onclick="copyInstallCmd()">
@@ -248,13 +226,13 @@ bindsym Print exec sharel capture region</code></pre>
   <footer>
     <div class="container footer-content">
       <div class="footer-brand">
-        <img src="sharel-logo.svg" width="20" height="20" alt="ShareL Logo">
+        <img src="sharel-logo.svg" width="20" height="20" alt="ShareL">
         <span>ShareL</span>
       </div>
-      <p>Free and open source screen capture suite for Linux. Built with Rust and Tauri.</p>
+      <p>Free and open source. Built with Rust and Tauri for Linux Wayland.</p>
       <div class="footer-links">
         <a href="https://github.com/44tl/ShareL" target="_blank" rel="noreferrer">GitHub</a>
-        <a href="https://github.com/44tl/ShareL/blob/main/LICENSE" target="_blank" rel="noreferrer">License (MIT)</a>
+        <a href="https://github.com/44tl/ShareL/releases" target="_blank" rel="noreferrer">Releases</a>
       </div>
     </div>
   </footer>
