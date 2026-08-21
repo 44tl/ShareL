@@ -1,4 +1,5 @@
 # ShareL
+[![No AI](https://raw.githubusercontent.com/nuxy/no-ai-badge/master/badge.svg)](https://github.com/nuxy/no-ai-badge)
 
 <p align="center">
   <img src="sharel-logo.svg" alt="ShareL Logo" width="120" height="120" />
